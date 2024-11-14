@@ -1,6 +1,6 @@
-# HellBot - Bot Discord Simple
+# HellBot - Bot Discord de Modération et Suivi
 
-Un bot Discord simple créé avec discord.py.
+Un bot Discord complet créé avec discord.py pour la modération et le suivi des activités du serveur.
 
 ## Configuration
 
@@ -42,6 +42,22 @@ python bot.py
 
 ## Fonctionnalités
 
+### Système de Logs
+- Suivi des messages supprimés
+- Suivi des messages édités
+- Logs dans un canal dédié
+
+### Gestion des Membres
+- Suivi des arrivées de nouveaux membres
+- Suivi des départs de membres
+- Tracking des invitations utilisées
+
+### Base de Données
+- Stockage persistant des données
+- Configuration du serveur
+- Historique des événements
+
+### Autres Fonctionnalités
 - Système de commandes simple
-- Gestion des événements de base
 - Configuration sécurisée avec variables d'environnement
+- Gestion des erreurs avec logs détaillés
