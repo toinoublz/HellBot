@@ -4,6 +4,8 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import asyncio
 import DB
+import traceback
+from datetime import datetime
 
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
@@ -24,6 +26,54 @@ async def on_ready():
     # Charger les invitations existantes pour chaque serveur
     for guild in bot.guilds:
         invites_before[guild.id] = await guild.invites()
+
+async def log_error(error: Exception, ctx = None):
+    """Envoie les erreurs dans le canal des super logs"""
+    logs_channel_id = db.get("logs_channel_id")
+    if not logs_channel_id:
+        return  # Si pas de canal configuré, on ne fait rien
+    
+    channel = bot.get_channel(logs_channel_id)
+    if not channel:
+        return
+    
+    # Créer un embed pour l'erreur
+    embed = discord.Embed(
+        title="⚠️ Erreur Détectée",
+        description="Une erreur s'est produite lors de l'exécution du bot",
+        color=discord.Color.red(),
+        timestamp=datetime.now()
+    )
+    
+    # Ajouter les détails de l'erreur
+    error_details = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+    if len(error_details) > 1024:  # Discord limite la taille des fields
+        error_details = error_details[:1021] + "..."
+    
+    embed.add_field(name="Type d'erreur", value=type(error).__name__, inline=False)
+    embed.add_field(name="Message d'erreur", value=str(error), inline=False)
+    embed.add_field(name="Traceback", value=f"```python\n{error_details}```", inline=False)
+    
+    # Ajouter le contexte si disponible
+    if ctx:
+        embed.add_field(
+            name="Contexte",
+            value=f"Commande: {ctx.command}\nAuteur: {ctx.author}\nCanal: {ctx.channel}\nMessage: {ctx.message.content}",
+            inline=False
+        )
+    
+    await channel.send(embed=embed)
+
+@bot.event
+async def on_error(event, *args, **kwargs):
+    """Capture les erreurs d'événements"""
+    error = traceback.format_exc()
+    await log_error(Exception(f"Erreur dans l'événement {event}:\n{error}"))
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Capture les erreurs de commandes"""
+    await log_error(error, ctx)
 
 @bot.event
 async def on_invite_create(invite):
