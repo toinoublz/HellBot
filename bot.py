@@ -26,6 +26,7 @@ async def on_ready():
     # Charger les invitations existantes pour chaque serveur
     for guild in bot.guilds:
         invites_before[guild.id] = await guild.invites()
+        invites_before[guild.id] = {inv.code: inv for inv in invites_before[guild.id]}
 
 async def log_error(error: Exception, ctx = None):
     """Envoie les erreurs dans le canal des super logs"""
@@ -95,6 +96,8 @@ async def on_invite_create(invite):
         if invite.expires_at:
             embed.add_field(name="Expire le", value=invite.expires_at.strftime("%d/%m/%Y à %H:%M"), inline=True)
         await logs_channel.send(embed=embed)
+    invites_before[invite.guild.id] = await invite.guild.invites()
+    invites_before[invite.guild.id] = {inv.code: inv for inv in invites_before[invite.guild.id]}
 
 @bot.event
 async def on_message_delete(message):
@@ -154,17 +157,18 @@ async def on_member_join(member):
     if logs_channel:
         # Récupérer les invitations après l'arrivée du membre
         invites_after = await member.guild.invites()
+        invites_after = {inv.code: inv for inv in invites_after}
         
         # Trouver quelle invitation a été utilisée
         used_invite = None
-        for invite_after in invites_after:
-            invite_before = next((inv for inv in invites_before[member.guild.id] if inv.code == invite_after.code), None)
-            if invite_before and invite_after.uses > invite_before.uses:
+        for invite_after_code, invite_after in invites_after:
+            if invite_after_code in invites_before[member.guild.id] and invite_after.uses > invites_before[member.guild.id][invite_after_code].uses:
                 used_invite = invite_after
                 break
 
         # Mettre à jour la liste des invitations
-        invites_before[member.guild.id] = invites_after
+        invites_before[member.guild.id] = await member.guild.invites()
+        invites_before[member.guild.id] = {inv.code: inv for inv in invites_before[member.guild.id]}
 
         # Créer l'embed de base pour le nouveau membre
         embed = discord.Embed(
