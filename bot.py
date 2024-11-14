@@ -2,6 +2,8 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+import asyncio
+import DB
 
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
@@ -11,23 +13,50 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="/", intents=intents)
 
-# ID du salon pour les logs (à remplacer par votre ID de salon)
-LOGS_CHANNEL_ID = 1306683155260117133
+db = DB.DB("hellbot")
+
+# Variable globale pour stocker les invitations
+invites_before = {}
 
 @bot.event
 async def on_ready():
     print(f'{bot.user} est connecté à Discord!')
+    # Charger les invitations existantes pour chaque serveur
+    for guild in bot.guilds:
+        invites_before[guild.id] = await guild.invites()
+
+@bot.event
+async def on_invite_create(invite):
+    logs_channel_id = db.get("logs_channel_id")
+    if not logs_channel_id:
+        return
+
+    logs_channel = bot.get_channel(logs_channel_id)
+    if logs_channel:
+        embed = discord.Embed(
+            title="Nouvelle Invitation Créée",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Créée par", value=invite.inviter.mention, inline=True)
+        embed.add_field(name="Code", value=invite.code, inline=True)
+        embed.add_field(name="Channel", value=invite.channel.mention, inline=True)
+        if invite.max_uses:
+            embed.add_field(name="Utilisations max", value=invite.max_uses, inline=True)
+        if invite.expires_at:
+            embed.add_field(name="Expire le", value=invite.expires_at.strftime("%d/%m/%Y à %H:%M"), inline=True)
+        await logs_channel.send(embed=embed)
 
 @bot.event
 async def on_message_delete(message):
-    if LOGS_CHANNEL_ID is None:
+    logs_channel_id = db.get("logs_channel_id")
+    if not logs_channel_id:
         return
     
     # Ignorer les messages des bots
     if message.author.bot:
         return
 
-    logs_channel = bot.get_channel(LOGS_CHANNEL_ID)
+    logs_channel = bot.get_channel(logs_channel_id)
     if logs_channel:
         embed = discord.Embed(
             title="Message Supprimé",
@@ -40,7 +69,8 @@ async def on_message_delete(message):
 
 @bot.event
 async def on_message_edit(before, after):
-    if LOGS_CHANNEL_ID is None:
+    logs_channel_id = db.get("logs_channel_id")
+    if not logs_channel_id:
         return
     
     # Ignorer les messages des bots
@@ -51,7 +81,7 @@ async def on_message_edit(before, after):
     if before.content == after.content:
         return
 
-    logs_channel = bot.get_channel(LOGS_CHANNEL_ID)
+    logs_channel = bot.get_channel(logs_channel_id)
     if logs_channel:
         embed = discord.Embed(
             title="Message Modifié",
@@ -66,11 +96,27 @@ async def on_message_edit(before, after):
 
 @bot.event
 async def on_member_join(member):
-    if LOGS_CHANNEL_ID is None:
+    logs_channel_id = db.get("logs_channel_id")
+    if not logs_channel_id:
         return
 
-    logs_channel = bot.get_channel(LOGS_CHANNEL_ID)
+    logs_channel = bot.get_channel(logs_channel_id)
     if logs_channel:
+        # Récupérer les invitations après l'arrivée du membre
+        invites_after = await member.guild.invites()
+        
+        # Trouver quelle invitation a été utilisée
+        used_invite = None
+        for invite_after in invites_after:
+            invite_before = next((inv for inv in invites_before[member.guild.id] if inv.code == invite_after.code), None)
+            if invite_before and invite_after.uses > invite_before.uses:
+                used_invite = invite_after
+                break
+
+        # Mettre à jour la liste des invitations
+        invites_before[member.guild.id] = invites_after
+
+        # Créer l'embed de base pour le nouveau membre
         embed = discord.Embed(
             title="Nouveau Membre",
             description=f"{member.mention} a rejoint le serveur!",
@@ -78,15 +124,25 @@ async def on_member_join(member):
         )
         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
         embed.add_field(name="Compte créé le", value=member.created_at.strftime("%d/%m/%Y à %H:%M"), inline=False)
+        
+        # Ajouter les informations sur l'invitation si trouvée
+        if used_invite:
+            embed.add_field(name="Invité par", value=used_invite.inviter.mention, inline=True)
+            embed.add_field(name="Code d'invitation", value=used_invite.code, inline=True)
+            embed.add_field(name="Utilisations", value=f"{used_invite.uses}/{used_invite.max_uses if used_invite.max_uses else '∞'}", inline=True)
+        else:
+            embed.add_field(name="Invitation", value="Non trouvée", inline=True)
+        
         embed.set_footer(text=f"ID: {member.id}")
         await logs_channel.send(embed=embed)
 
 @bot.event
 async def on_member_remove(member):
-    if LOGS_CHANNEL_ID is None:
+    logs_channel_id = db.get("logs_channel_id")
+    if not logs_channel_id:
         return
 
-    logs_channel = bot.get_channel(LOGS_CHANNEL_ID)
+    logs_channel = bot.get_channel(logs_channel_id)
     if logs_channel:
         embed = discord.Embed(
             title="Membre Parti",
@@ -98,6 +154,32 @@ async def on_member_remove(member):
         embed.set_footer(text=f"ID: {member.id}")
         await logs_channel.send(embed=embed)
 
+@bot.event
+async def on_message(message):
+    # Ignorer les messages du bot
+    if message.author.bot:
+        return
+    
+    # Continuer le traitement des autres commandes
+    await bot.process_commands(message)
+
+    # Vérifier si c'est la commande $sync
+    if message.content == "$sync":
+        # Vérifier si l'auteur est un administrateur
+        if message.author.guild_permissions.administrator:
+            try:
+                await bot.tree.sync()
+                sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
+                await message.delete()  # Supprimer la commande $sync
+                await sync_message.edit(content="✅ Commandes synchronisées avec succès!", delete_after=5)
+            except Exception as e:
+                error_message = await message.channel.send(f"❌ Erreur lors de la synchronisation: {str(e)}", delete_after=5)
+                await message.delete()
+        else:
+            # Si l'utilisateur n'est pas admin, supprimer sa commande et envoyer un message d'erreur temporaire
+            warning = await message.channel.send("❌ Vous n'avez pas la permission d'utiliser cette commande.", delete_after=5)
+            await message.delete()
+
 @bot.command(name='hello')
 async def hello(ctx):
     """Répond avec un message de salutation"""
@@ -107,14 +189,6 @@ async def hello(ctx):
 async def ping(ctx):
     """Vérifie la latence du bot"""
     await ctx.send(f'Pong! Latence: {round(bot.latency * 1000)}ms')
-
-@bot.command(name='setlogschannel')
-@commands.has_permissions(administrator=True)
-async def set_logs_channel(ctx):
-    """Définit le salon actuel comme salon de logs"""
-    global LOGS_CHANNEL_ID
-    LOGS_CHANNEL_ID = ctx.channel.id
-    await ctx.send(f"Ce salon a été défini comme salon de logs! ID: {LOGS_CHANNEL_ID}")
 
 # Lancer le bot
 if __name__ == '__main__':

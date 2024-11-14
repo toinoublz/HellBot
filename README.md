@@ -37,8 +37,8 @@ python bot.py
 
 ## Commandes disponibles
 
-- `!hello` : Le bot vous salue
-- `!ping` : Vérifie la latence du bot
+- `/hello` : Le bot vous salue
+- `/ping` : Vérifie la latence du bot
 
 ## Fonctionnalités
 
