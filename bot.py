@@ -86,7 +86,8 @@ async def on_invite_create(invite):
     if logs_channel:
         embed = discord.Embed(
             title="Nouvelle Invitation Créée",
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
         )
         embed.add_field(name="Créée par", value=invite.inviter.mention, inline=True)
         embed.add_field(name="Code", value=invite.code, inline=True)
@@ -95,6 +96,7 @@ async def on_invite_create(invite):
             embed.add_field(name="Utilisations max", value=invite.max_uses, inline=True)
         if invite.expires_at:
             embed.add_field(name="Expire le", value=invite.expires_at.strftime("%d/%m/%Y à %H:%M"), inline=True)
+        embed.set_footer(text=f"ID: {invite.inviter.id}")
         await logs_channel.send(embed=embed)
     invites_before[invite.guild.id] = await invite.guild.invites()
     invites_before[invite.guild.id] = {inv.code: inv for inv in invites_before[invite.guild.id]}
@@ -114,10 +116,12 @@ async def on_message_delete(message):
         embed = discord.Embed(
             title="Message Supprimé",
             description=f"Un message a été supprimé dans {message.channel.mention}",
-            color=discord.Color.red()
+            color=discord.Color.red(),
+            timestamp=datetime.now()
         )
         embed.add_field(name="Auteur", value=message.author.mention, inline=False)
         embed.add_field(name="Contenu", value=message.content or "Contenu non disponible", inline=False)
+        embed.set_footer(text=f"ID: {message.author.id}")
         await logs_channel.send(embed=embed)
 
 @bot.event
@@ -139,12 +143,14 @@ async def on_message_edit(before, after):
         embed = discord.Embed(
             title="Message Modifié",
             description=f"Un message a été modifié dans {before.channel.mention}",
-            color=discord.Color.blue()
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
         )
         embed.add_field(name="Auteur", value=before.author.mention, inline=False)
         embed.add_field(name="Avant", value=before.content or "Contenu non disponible", inline=False)
         embed.add_field(name="Après", value=after.content or "Contenu non disponible", inline=False)
         embed.add_field(name="Lien", value=f"[Aller au message]({after.jump_url})", inline=False)
+        embed.set_footer(text=f"ID: {before.author.id}")
         await logs_channel.send(embed=embed)
 
 @bot.event
@@ -161,7 +167,7 @@ async def on_member_join(member):
         
         # Trouver quelle invitation a été utilisée
         used_invite = None
-        for invite_after_code, invite_after in invites_after:
+        for invite_after_code, invite_after in invites_after.items():
             if invite_after_code in invites_before[member.guild.id] and invite_after.uses > invites_before[member.guild.id][invite_after_code].uses:
                 used_invite = invite_after
                 break
@@ -174,7 +180,8 @@ async def on_member_join(member):
         embed = discord.Embed(
             title="Nouveau Membre",
             description=f"{member.mention} a rejoint le serveur!",
-            color=discord.Color.green()
+            color=discord.Color.green(),
+            timestamp=datetime.now()
         )
         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
         embed.add_field(name="Compte créé le", value=member.created_at.strftime("%d/%m/%Y à %H:%M"), inline=False)
@@ -200,13 +207,37 @@ async def on_member_remove(member):
     if logs_channel:
         embed = discord.Embed(
             title="Membre Parti",
-            description=f"{member.name}#{member.discriminator} a quitté le serveur",
-            color=discord.Color.red()
+            description=f"{member.display_name} a quitté le serveur",
+            color=discord.Color.red(),
+            timestamp=datetime.now()
         )
         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
         embed.add_field(name="Avait rejoint le", value=member.joined_at.strftime("%d/%m/%Y à %H:%M"), inline=False)
         embed.set_footer(text=f"ID: {member.id}")
         await logs_channel.send(embed=embed)
+
+@bot.event
+async def on_member_update(before, after):
+    # Vérifier si le nom a changé
+    if before.display_name != after.display_name:
+        logs_channel_id = db.get("logs_channel_id")
+        if not logs_channel_id:
+            return
+
+        logs_channel = bot.get_channel(logs_channel_id)
+        if logs_channel:
+            embed = discord.Embed(
+                title="Changement de Pseudo",
+                description=f"Un membre a changé son pseudo",
+                color=discord.Color.blue(),
+                timestamp=datetime.now()
+            )
+            embed.add_field(name="Membre", value=after.mention, inline=False)
+            embed.add_field(name="Ancien pseudo", value=before.display_name, inline=True)
+            embed.add_field(name="Nouveau pseudo", value=after.display_name, inline=True)
+            embed.set_thumbnail(url=after.avatar.url if after.avatar else after.default_avatar.url)
+            embed.set_footer(text=f"ID: {after.id}")
+            await logs_channel.send(embed=embed)
 
 @bot.event
 async def on_message(message):
