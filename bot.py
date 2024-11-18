@@ -33,11 +33,11 @@ async def log_error(error: Exception, ctx = None):
     logs_channel_id = db.get("logs_channel_id")
     if not logs_channel_id:
         return  # Si pas de canal configuré, on ne fait rien
-    
+
     channel = bot.get_channel(logs_channel_id)
     if not channel:
         return
-    
+
     # Créer un embed pour l'erreur
     embed = discord.Embed(
         title="⚠️ Erreur Détectée",
@@ -45,16 +45,16 @@ async def log_error(error: Exception, ctx = None):
         color=discord.Color.red(),
         timestamp=datetime.now()
     )
-    
+
     # Ajouter les détails de l'erreur
     error_details = "".join(traceback.format_exception(type(error), error, error.__traceback__))
     if len(error_details) > 1024:  # Discord limite la taille des fields
         error_details = error_details[:1021] + "..."
-    
+
     embed.add_field(name="Type d'erreur", value=type(error).__name__, inline=False)
     embed.add_field(name="Message d'erreur", value=str(error), inline=False)
     embed.add_field(name="Traceback", value=f"```python\n{error_details}```", inline=False)
-    
+
     # Ajouter le contexte si disponible
     if ctx:
         embed.add_field(
@@ -62,7 +62,7 @@ async def log_error(error: Exception, ctx = None):
             value=f"Commande: {ctx.command}\nAuteur: {ctx.author}\nCanal: {ctx.channel}\nMessage: {ctx.message.content}",
             inline=False
         )
-    
+
     await channel.send(embed=embed)
 
 @bot.event
@@ -72,12 +72,12 @@ async def on_error(event, *args, **kwargs):
     await log_error(Exception(f"Erreur dans l'événement {event}:\n{error}"))
 
 @bot.event
-async def on_command_error(ctx, error):
+async def on_command_error(ctx: commands.Context, error: commands.CommandError):
     """Capture les erreurs de commandes"""
     await log_error(error, ctx)
 
 @bot.event
-async def on_invite_create(invite):
+async def on_invite_create(invite: discord.Invite):
     logs_channel_id = db.get("logs_channel_id")
     if not logs_channel_id:
         return
@@ -102,11 +102,11 @@ async def on_invite_create(invite):
     invites_before[invite.guild.id] = {inv.code: inv for inv in invites_before[invite.guild.id]}
 
 @bot.event
-async def on_message_delete(message):
+async def on_message_delete(message: discord.Message):
     logs_channel_id = db.get("logs_channel_id")
     if not logs_channel_id:
         return
-    
+
     # Ignorer les messages des bots
     if message.author.bot:
         return
@@ -125,15 +125,15 @@ async def on_message_delete(message):
         await logs_channel.send(embed=embed)
 
 @bot.event
-async def on_message_edit(before, after):
+async def on_message_edit(before: discord.Message, after: discord.Message):
     logs_channel_id = db.get("logs_channel_id")
     if not logs_channel_id:
         return
-    
+
     # Ignorer les messages des bots
     if before.author.bot:
         return
-    
+
     # Ignorer si le contenu n'a pas changé (par exemple, uniquement un embed ajouté)
     if before.content == after.content:
         return
@@ -154,17 +154,19 @@ async def on_message_edit(before, after):
         await logs_channel.send(embed=embed)
 
 @bot.event
-async def on_member_join(member):
+async def on_member_join(member: discord.Member):
     logs_channel_id = db.get("logs_channel_id")
     if not logs_channel_id:
         return
+
+    await member.add_roles(member.guild.get_role(db.get("newbie_role_id")))
 
     logs_channel = bot.get_channel(logs_channel_id)
     if logs_channel:
         # Récupérer les invitations après l'arrivée du membre
         invites_after = await member.guild.invites()
         invites_after = {inv.code: inv for inv in invites_after}
-        
+
         # Trouver quelle invitation a été utilisée
         used_invite = None
         for invite_after_code, invite_after in invites_after.items():
@@ -185,7 +187,7 @@ async def on_member_join(member):
         )
         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
         embed.add_field(name="Compte créé le", value=member.created_at.strftime("%d/%m/%Y à %H:%M"), inline=False)
-        
+
         # Ajouter les informations sur l'invitation si trouvée
         if used_invite:
             embed.add_field(name="Invité par", value=used_invite.inviter.mention, inline=True)
@@ -193,12 +195,12 @@ async def on_member_join(member):
             embed.add_field(name="Utilisations", value=f"{used_invite.uses}/{used_invite.max_uses if used_invite.max_uses else '∞'}", inline=True)
         else:
             embed.add_field(name="Invitation", value="Non trouvée", inline=True)
-        
+
         embed.set_footer(text=f"ID: {member.id}")
         await logs_channel.send(embed=embed)
 
 @bot.event
-async def on_member_remove(member):
+async def on_member_remove(member: discord.Member):
     logs_channel_id = db.get("logs_channel_id")
     if not logs_channel_id:
         return
@@ -217,7 +219,7 @@ async def on_member_remove(member):
         await logs_channel.send(embed=embed)
 
 @bot.event
-async def on_member_update(before, after):
+async def on_member_update(before: discord.Member, after: discord.Member):
     # Vérifier si le nom a changé
     if before.display_name != after.display_name:
         logs_channel_id = db.get("logs_channel_id")
@@ -240,11 +242,11 @@ async def on_member_update(before, after):
             await logs_channel.send(embed=embed)
 
 @bot.event
-async def on_message(message):
+async def on_message(message: discord.Message):
     # Ignorer les messages du bot
     if message.author.bot:
         return
-    
+
     # Continuer le traitement des autres commandes
     await bot.process_commands(message)
 
@@ -253,12 +255,12 @@ async def on_message(message):
         # Vérifier si l'auteur est un administrateur
         if message.author.guild_permissions.administrator:
             try:
-                await bot.tree.sync()
-                sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
                 await message.delete()  # Supprimer la commande $sync
-                await sync_message.edit(content="✅ Commandes synchronisées avec succès!", delete_after=5)
+                sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
+                syncRet = await bot.tree.sync()
+                await sync_message.edit(content="✅ Commandes synchronisées avec succès! " + syncRet, delete_after=5)
             except Exception as e:
-                error_message = await message.channel.send(f"❌ Erreur lors de la synchronisation: {str(e)}", delete_after=5)
+                await message.channel.send(f"❌ Erreur lors de la synchronisation: {str(e)}", delete_after=5)
                 await message.delete()
         else:
             # Si l'utilisateur n'est pas admin, supprimer sa commande et envoyer un message d'erreur temporaire
