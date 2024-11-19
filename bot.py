@@ -28,6 +28,14 @@ async def on_ready():
         invites_before[guild.id] = await guild.invites()
         invites_before[guild.id] = {inv.code: inv for inv in invites_before[guild.id]}
 
+    hellcup_guild = bot.get_guild(db.get("hellcup_guild_id"))
+    await bot.change_presence(
+        activity=discord.Activity(
+            name=f"{len(hellcup_guild.members)} gens (trop) cools !",
+            type=discord.ActivityType.watching,
+        )
+    )
+
 async def log_error(error: Exception, ctx = None):
     """Envoie les erreurs dans le canal des super logs"""
     logs_channel_id = db.get("logs_channel_id")
@@ -160,6 +168,13 @@ async def on_member_join(member: discord.Member):
         return
 
     await member.add_roles(member.guild.get_role(db.get("newbie_role_id")))
+    
+    await bot.change_presence(
+        activity=discord.Activity(
+            name=f"{len(member.guild.members)} gens (trop) cools !",
+            type=discord.ActivityType.watching,
+        )
+    )
 
     logs_channel = bot.get_channel(logs_channel_id)
     if logs_channel:
