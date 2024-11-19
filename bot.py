@@ -6,6 +6,7 @@ import asyncio
 import DB
 import traceback
 from datetime import datetime
+import modals as md
 
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
@@ -60,7 +61,7 @@ async def log_error(error: Exception, ctx = None):
         error_details = error_details[:1021] + "..."
 
     embed.add_field(name="Type d'erreur", value=type(error).__name__, inline=False)
-    embed.add_field(name="Message d'erreur", value=str(error), inline=False)
+    # embed.add_field(name="Message d'erreur", value=str(error), inline=False)
     embed.add_field(name="Traceback", value=f"```python\n{error_details}```", inline=False)
 
     # Ajouter le contexte si disponible
@@ -168,7 +169,7 @@ async def on_member_join(member: discord.Member):
         return
 
     await member.add_roles(member.guild.get_role(db.get("newbie_role_id")))
-    
+
     await bot.change_presence(
         activity=discord.Activity(
             name=f"{len(member.guild.members)} gens (trop) cools !",
@@ -256,6 +257,21 @@ async def on_member_update(before: discord.Member, after: discord.Member):
             embed.set_footer(text=f"ID: {after.id}")
             await logs_channel.send(embed=embed)
 
+
+@bot.event
+async def on_interaction(interaction: discord.Interaction):
+    if 'custom_id' in interaction.data:
+        if interaction.data['custom_id'] == "init_spectator":
+            if interaction.guild.get_role(db.get("registered_role_id")) not in interaction.user.roles:
+                print('spectator')
+                await interaction.user.add_roles(interaction.guild.get_role(db.get("spectator_role_id")))
+                await interaction.response.send_message(":popcorn: Préparez vos popcorns, vous voici spectateur du tournoi !", ephemeral=True)
+            else:
+                await interaction.response.send_message("Vous êtes déjà inscrit dans une équipe, si vous voulez vous désinscrire, merci de voir avec un admin !", ephemeral=True)
+        elif interaction.data['custom_id'] == "init_player":
+            print('player')
+            await interaction.response.send_modal(md.RegisterModal())
+
 @bot.event
 async def on_message(message: discord.Message):
     # Ignorer les messages du bot
@@ -265,22 +281,30 @@ async def on_message(message: discord.Message):
     # Continuer le traitement des autres commandes
     await bot.process_commands(message)
 
-    # Vérifier si c'est la commande $sync
-    if message.content == "$sync":
-        # Vérifier si l'auteur est un administrateur
-        if message.author.guild_permissions.administrator:
-            try:
-                await message.delete()  # Supprimer la commande $sync
-                sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
-                syncRet = await bot.tree.sync()
-                await sync_message.edit(content="✅ Commandes synchronisées avec succès! " + syncRet, delete_after=5)
-            except Exception as e:
-                await message.channel.send(f"❌ Erreur lors de la synchronisation: {str(e)}", delete_after=5)
-                await message.delete()
-        else:
-            # Si l'utilisateur n'est pas admin, supprimer sa commande et envoyer un message d'erreur temporaire
-            warning = await message.channel.send("❌ Vous n'avez pas la permission d'utiliser cette commande.", delete_after=5)
-            await message.delete()
+    if message.author.guild_permissions.administrator:
+
+        # Vérifier si c'est la commande $sync
+        if message.content == "$sync":
+            # Vérifier si l'auteur est un administrateur
+                try:
+                    await message.delete()  # Supprimer la commande $sync
+                    sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
+                    syncRet = await bot.tree.sync()
+                    await sync_message.edit(content="✅ Commandes synchronisées avec succès! " + syncRet, delete_after=5)
+                except Exception as e:
+                    await message.channel.send(f"❌ Erreur lors de la synchronisation: {str(e)}", delete_after=5)
+                    await message.delete()
+
+        elif message.content.startswith("$initmessagebienvenue"):
+            view = discord.ui.View()
+            player = discord.ui.Button(style=discord.ButtonStyle.primary, label="Joueur !", custom_id="init_player")
+            spectator = discord.ui.Button(style=discord.ButtonStyle.primary, label="Spectateur !", custom_id="init_spectator")
+            view.add_item(player)
+            view.add_item(spectator)
+            e = discord.Embed(title="Bienvenue sur le serveur ! :wave:", color=discord.Color.green())
+            e.add_field(name="Que venez vous faire sur le serveur ?", value="Si vous venez pour vous battre, cliquez sur le bouton \"Joueur !\", si vous venez pour observer le tournoi, cliquez sur le bouton \"Spectateur !\".", inline=False)
+            e.set_footer(text=f"©HellBot")
+            await message.guild.get_channel(db.get('rules_channel_id')).send(embed=e, view=view)
 
 @bot.command(name='hello')
 async def hello(ctx):
