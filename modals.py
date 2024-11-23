@@ -1,13 +1,16 @@
 import discord
 from discord import ui
 import hellcup as hc
+import DB as db
+
+db = db.DB("hellbot")
 
 class RegisterModal(ui.Modal):
     def __init__(self):
         super().__init__(title="Inscription")
 
         surname = ui.TextInput(label="Surnom", placeholder="Quel surnom voulez-vous utiliser pour le tournoi ?", style=discord.TextStyle.short, min_length=2, max_length=32)
-        geoguessrLink = ui.TextInput(label="Lien Geoguessr (allez sur https://www.geoguessr.com/me/profile et tout en bas vous avez le lien sous la forme https://www.geoguessr.com/user/xxx)", placeholder="Lien de votre profil sur Geoguessr", style=discord.TextStyle.short)
+        geoguessrLink = ui.TextInput(label="Lien de votre profil Geoguessr", placeholder="Lien de votre profil sur Geoguessr", style=discord.TextStyle.short)
 
         self.add_item(surname)
         self.add_item(geoguessrLink)
@@ -15,8 +18,15 @@ class RegisterModal(ui.Modal):
         return
 
     async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         surname = interaction.data['components'][0]['components'][0]['value']
         geoguessrLink = interaction.data['components'][1]['components'][0]['value']
-        member = {"discordId": interaction.user.id, "surname": surname, "geoguessrId": geoguessrLink if "www.geoguessr.com/user" not in geoguessrLink else geoguessrLink.split('/')[-1]}
-        ret = await hc.inscription(member)
-        await interaction.response.send_message(f"Bienvenue dans le tournoi {ret['surname']} ! Vous êtes bien inscrit en tant que joueur, pensez maintenant à créer votre équipe avec la commande `/equipe`", ephemeral=True)
+        member = {"discordId": str(interaction.user.id), "surname": surname, "geoguessrId": geoguessrLink if "www.geoguessr.com/user" not in geoguessrLink else geoguessrLink.split('/')[-1]}
+        if not (await hc.is_geoguessr_id_correct(member["geoguessrId"])):
+             await interaction.followup.send(f":warning: {interaction.user.mention} :warning:\n\nLe lien de votre profil Geoguessr semble incorrect, pour le trouver, il faut aller sur https://www.geoguessr.com/me/profile et tout en bas vous avez le lien sous la forme https://www.geoguessr.com/user/xxx). Si vous pensez que c'est une erreur, merci de contacter un admin !", ephemeral=True)
+        else:
+            await hc.inscription(member)
+            await interaction.user.add_roles(interaction.guild.get_role(db.get("registered_role_id")))
+            await interaction.user.remove_roles(interaction.guild.get_role(db.get("spectator_role_id")))
+            await interaction.followup.send(f"Bienvenue dans le tournoi {interaction.user.mention} ! Vous êtes bien inscrit en tant que joueur, pensez maintenant à créer votre équipe avec la commande `/equipe`", ephemeral=True)
+

@@ -7,6 +7,7 @@ import DB
 import traceback
 from datetime import datetime
 import modals as md
+import hellcup as hc
 
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
@@ -263,14 +264,15 @@ async def on_interaction(interaction: discord.Interaction):
     if 'custom_id' in interaction.data:
         if interaction.data['custom_id'] == "init_spectator":
             if interaction.guild.get_role(db.get("registered_role_id")) not in interaction.user.roles:
-                print('spectator')
                 await interaction.user.add_roles(interaction.guild.get_role(db.get("spectator_role_id")))
                 await interaction.response.send_message(":popcorn: Préparez vos popcorns, vous voici spectateur du tournoi !", ephemeral=True)
             else:
-                await interaction.response.send_message("Vous êtes déjà inscrit dans une équipe, si vous voulez vous désinscrire, merci de voir avec un admin !", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin", ephemeral=True)
         elif interaction.data['custom_id'] == "init_player":
-            print('player')
-            await interaction.response.send_modal(md.RegisterModal())
+            if interaction.guild.get_role(db.get("registered_role_id")) in interaction.user.roles:
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin", ephemeral=True)
+            else:
+                await interaction.response.send_modal(md.RegisterModal())
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -296,7 +298,7 @@ async def on_message(message: discord.Message):
                     await message.delete()
 
         elif message.content.startswith("$initmessagebienvenue"):
-            view = discord.ui.View()
+            view = discord.ui.View(timeout=None)
             player = discord.ui.Button(style=discord.ButtonStyle.primary, label="Joueur !", custom_id="init_player")
             spectator = discord.ui.Button(style=discord.ButtonStyle.primary, label="Spectateur !", custom_id="init_spectator")
             view.add_item(player)
@@ -318,4 +320,4 @@ async def ping(ctx):
 
 # Lancer le bot
 if __name__ == '__main__':
-    bot.run(TOKEN)
+    bot.run(TOKEN, log_handler=None)
