@@ -293,6 +293,15 @@ async def on_interaction(interaction: discord.Interaction):
                 await userMentionned.add_roles(teamRole)
                 await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} !", ephemeral=True)
                 await userMentionned.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! Si jamais c'est une erreur, merci de contacter un admin.")
+                embed = discord.Embed(
+                    title="Nouvelle équipe",
+                    description=f"{interaction.user.mention} et {userMentionned.mention} font maintenant équipe !",
+                    color=discord.Color.green(),
+                    timestamp=datetime.now()
+                )
+                embed.add_field(name="Nom de l'équipe", value=teamRole.name, inline=False)
+                embed.add_field(name="Membres", value=f"{interaction.user.mention}\n{userMentionned.mention}", inline=False)
+                await interaction.guild.get_channel(db.get("registration_channel_id")).send(embed=embed)
 
 
 @bot.tree.command(name='team', description="Créer votre équipe pour finaliser votre inscription !")
