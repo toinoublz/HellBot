@@ -273,6 +273,17 @@ async def on_interaction(interaction: discord.Interaction):
                 await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin", ephemeral=True)
             else:
                 await interaction.response.send_modal(md.RegisterModal())
+        elif interaction.data['custom_id'] == "team_select":
+            print(interaction.data['values'])
+
+
+@bot.tree.command(name='team')
+async def team(interaction: discord.Interaction):
+    view = discord.ui.View()
+    view.add_item(discord.ui.UserSelect(custom_id="team_select"))
+    await interaction.response.send_message("Choisissez les membres de votre equipe", view=view)
+
+
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -292,10 +303,9 @@ async def on_message(message: discord.Message):
                     await message.delete()  # Supprimer la commande $sync
                     sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
                     syncRet = await bot.tree.sync()
-                    await sync_message.edit(content="✅ Commandes synchronisées avec succès! " + syncRet, delete_after=5)
+                    await sync_message.edit(content="✅ Commandes synchronisées avec succès! " + str(syncRet), delete_after=5)
                 except Exception as e:
-                    await message.channel.send(f"❌ Erreur lors de la synchronisation: {str(e)}", delete_after=5)
-                    await message.delete()
+                    await sync_message.edit(f"❌ Erreur lors de la synchronisation: {str(e)}")
 
         elif message.content.startswith("$initmessagebienvenue"):
             view = discord.ui.View(timeout=None)
