@@ -2,6 +2,7 @@ import gspread_asyncio
 import gspread_formatting
 from google.oauth2.service_account import Credentials
 from oauth2client.service_account import ServiceAccountCredentials
+import discord
 
 def get_creds():
     # To obtain a service account JSON file, follow these steps:
@@ -30,7 +31,7 @@ async def connect_gsheet_api() -> gspread_asyncio.AsyncioGspreadClient:
     clientg = await agcm.authorize()
     return clientg
 
-async def gspread_new_registered(member: dict):
+async def gspread_new_registration(member: dict):
     clientg = await connect_gsheet_api()
     spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
     worksheet = await spreadsheet.worksheet("Inscrits")
@@ -38,27 +39,27 @@ async def gspread_new_registered(member: dict):
     return
 
 
-async def gspread_new_team(team: dict):
+async def gspread_new_team(member1: discord.Member, member2: discord.Member):
     clientg = await connect_gsheet_api()
     spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
     worksheet = await spreadsheet.worksheet("Inscrits")
     lines = await worksheet.get_all_records()
     player1Updated = player2Updated = False
+    team = {"member1_discordId": str(member1.id), "member2_discordId": str(member2.id)}
     for lineNumber, line in enumerate(lines):
         if str(line["ID Discord"]) == team["member1_discordId"]:
-            if line["Team"] == 1:
-                raise Exception("Le joueur 1 a deja une equipe")
             await worksheet.update_cell(lineNumber + 2, 4, 1)
+            team["member1_geoguessrId"] = line["ID GeoGuessr"]
+            team["member1_surname"] = line["Pseudo/surnom"]
             player1Updated = True
         if str(line["ID Discord"]) == team["member2_discordId"]:
-            if line["Team"] == 1:
-                raise Exception("Le joueur 2 a deja une equipe")
             await worksheet.update_cell(lineNumber + 2, 4, 1)
+            team["member2_geoguessrId"] = line["ID GeoGuessr"]
+            team["member2_surname"] = line["Pseudo/surnom"]
             player2Updated = True
         if player1Updated and player2Updated:
             break
-
     worksheet = await spreadsheet.worksheet("Teams")
     await worksheet.append_row([team["member1_discordId"], team["member1_geoguessrId"], team["member2_discordId"], team["member2_geoguessrId"], team["member1_surname"], team["member2_surname"], team["member1_surname"] + '_' + team["member2_surname"]])
 
-    return
+    return [team["member1_surname"], team["member2_surname"]]

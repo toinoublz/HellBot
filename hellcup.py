@@ -1,5 +1,6 @@
 import aiohttp
 import gspread_utilities as gu
+import discord
 
 async def is_geoguessr_id_correct(geoguessr_id: str):
     async with aiohttp.ClientSession() as session:
@@ -11,5 +12,9 @@ async def is_geoguessr_id_correct(geoguessr_id: str):
 
 
 async def inscription(member: dict):
-    await gu.gspread_new_registered(member)
-    return member
+    await gu.gspread_new_registration(member)
+    return
+
+async def create_team(member1: discord.Member, member2: discord.Member):
+    ### Let's find them in the gsheet list of registered players
+    return await gu.gspread_new_team(member1, member2)

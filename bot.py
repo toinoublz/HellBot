@@ -267,21 +267,45 @@ async def on_interaction(interaction: discord.Interaction):
                 await interaction.user.add_roles(interaction.guild.get_role(db.get("spectator_role_id")))
                 await interaction.response.send_message(":popcorn: Préparez vos popcorns, vous voici spectateur du tournoi !", ephemeral=True)
             else:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin.", ephemeral=True)
         elif interaction.data['custom_id'] == "init_player":
             if interaction.guild.get_role(db.get("registered_role_id")) in interaction.user.roles:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin.", ephemeral=True)
             else:
                 await interaction.response.send_modal(md.RegisterModal())
         elif interaction.data['custom_id'] == "team_select":
-            print(interaction.data['values'])
+            userMentionned = interaction.guild.get_member(int(interaction.data['values'][0]))
+            if userMentionned == interaction.user:
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous ne pouvez pas faire équipe avec vous-meme !", ephemeral=True)
+            if userMentionned in interaction.guild.get_role(db.get("player_role_id")).members:
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné à déjà une équipe, si vous pensez que c'est une erreur, merci de voir avec un admin.", ephemeral=True)
+            elif userMentionned in interaction.guild.get_role(db.get("spectator_role_id")).members:
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné est inscrit en tant que spectateur, pour y remédier, dites lui d'aller s'inscrire en tant que joueur dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
+            elif userMentionned not in interaction.guild.get_role(db.get("registered_role_id")).members:
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné n'est pas encore inscrit, pour y remédier, dites lui d'aller s'inscrire en tant que joueur dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
+            else:
+                await interaction.response.defer()
+                nicknames = await hc.create_team(interaction.user, userMentionned)
+                await interaction.user.add_roles(interaction.guild.get_role(db.get("player_role_id")))
+                await userMentionned.add_roles(interaction.guild.get_role(db.get("player_role_id")))
+                teamRole = await interaction.guild.create_role(name='_'.join(nicknames))
+                await interaction.user.add_roles(teamRole)
+                await userMentionned.add_roles(teamRole)
+                await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} !", ephemeral=True)
+                await userMentionned.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! Si jamais c'est une erreur, merci de contacter un admin.")
 
 
-@bot.tree.command(name='team')
+@bot.tree.command(name='team', description="Créer votre équipe pour finaliser votre inscription !")
 async def team(interaction: discord.Interaction):
-    view = discord.ui.View()
-    view.add_item(discord.ui.UserSelect(custom_id="team_select"))
-    await interaction.response.send_message("Choisissez les membres de votre equipe", view=view)
+    if interaction.user in interaction.guild.get_role(db.get("player_role_id")).members:
+        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous avez deja une equipe !", ephemeral=True)
+    elif interaction.user in interaction.guild.get_role(db.get("spectator_role_id")).members:
+        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes inscrit en tant que spectateur, si jamais vous voulez jouer, rdv dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
+    else:
+        view = discord.ui.View()
+        view.add_item(discord.ui.UserSelect(custom_id="team_select", max_values=1, placeholder="Qui sera votre binome ?", min_values=1))
+        await interaction.response.send_message("Indiquez votre binôme", view=view, ephemeral=True)
+    return
 
 
 
