@@ -296,23 +296,21 @@ async def on_interaction(interaction: discord.Interaction):
 
                 overwrites = {
                     interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                    teamRole: discord.PermissionOverwrite(read_messages=True)
-                    adminRole: discord.PermissionOverwrite(read_messages=True)
+                    teamRole: discord.PermissionOverwrite(read_messages=True),
+                    adminRole: discord.PermissionOverwrite(read_messages=True),
                 }
 
                 channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwrites)
-
                 await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate !", ephemeral=True)
                 await userMentionned.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin.")
                 embed = discord.Embed(
                     title="Nouvelle équipe",
-                    description=f"{interaction.user.mention} et {userMentionned.mention} font maintenant équipe !",
+                    description=f"Une nouvelle équipe est apparue / A new team has appeared : {nicknames[0]} ({interaction.user.mention}) & {nicknames[1]} ({userMentionned.mention})",
                     color=discord.Color.green(),
                     timestamp=datetime.now()
                 )
-                embed.add_field(name="Nom de l'équipe", value=teamRole.name, inline=False)
-                embed.add_field(name="Membres", value=f"{interaction.user.mention}\n{userMentionned.mention}", inline=False)
                 await interaction.guild.get_channel(db.get("registration_channel_id")).send(embed=embed)
+                await interaction.guild.get_channel(db.get("new_team_channel_id")).send(embed=embed)
 
 
 @bot.tree.command(name='team', description="Créer votre équipe pour finaliser votre inscription !")
