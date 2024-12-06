@@ -291,8 +291,19 @@ async def on_interaction(interaction: discord.Interaction):
                 teamRole = await interaction.guild.create_role(name='_'.join(nicknames))
                 await interaction.user.add_roles(teamRole)
                 await userMentionned.add_roles(teamRole)
-                await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} !", ephemeral=True)
-                await userMentionned.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! Si jamais c'est une erreur, merci de contacter un admin.")
+                category = interaction.guild.get_channel(db.get("team_text_channels_category_id"))
+                adminRole = interaction.guild.get_role(db.get("admin_role_id"))
+
+                overwrites = {
+                    interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                    teamRole: discord.PermissionOverwrite(read_messages=True)
+                    adminRole: discord.PermissionOverwrite(read_messages=True)
+                }
+
+                channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwrites)
+
+                await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate !", ephemeral=True)
+                await userMentionned.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin.")
                 embed = discord.Embed(
                     title="Nouvelle équipe",
                     description=f"{interaction.user.mention} et {userMentionned.mention} font maintenant équipe !",
