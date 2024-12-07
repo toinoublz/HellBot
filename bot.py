@@ -302,7 +302,7 @@ async def on_interaction(interaction: discord.Interaction):
 
                 channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwrites)
                 await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate !", ephemeral=True)
-                await userMentionned.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin.")
+                await userMentionned.send(f":tada: {userMentionned.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin.")
                 embed = discord.Embed(
                     title="Nouvelle équipe",
                     description=f"Une nouvelle équipe est apparue / A new team has appeared : {nicknames[0]} ({interaction.user.mention}) & {nicknames[1]} ({userMentionned.mention})",
