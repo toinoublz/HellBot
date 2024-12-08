@@ -265,24 +265,24 @@ async def on_interaction(interaction: discord.Interaction):
         if interaction.data['custom_id'] == "init_spectator":
             if interaction.guild.get_role(db.get("registered_role_id")) not in interaction.user.roles:
                 await interaction.user.add_roles(interaction.guild.get_role(db.get("spectator_role_id")))
-                await interaction.response.send_message(":popcorn: Préparez vos popcorns, vous voici spectateur du tournoi !", ephemeral=True)
+                await interaction.response.send_message(":popcorn: Préparez vos popcorns, vous voici spectateur du tournoi ! / Prepare your popcorns, you are now a spectator of the tournament !", ephemeral=True)
             else:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin.", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin. / You are already registered, if you want to modify your registration, please contact an admin.", ephemeral=True)
         elif interaction.data['custom_id'] == "init_player":
             if interaction.guild.get_role(db.get("registered_role_id")) in interaction.user.roles:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin.", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin. / You are already registered, if you want to modify your registration, please contact an admin.", ephemeral=True)
             else:
                 await interaction.response.send_modal(md.RegisterModal())
         elif interaction.data['custom_id'] == "team_select":
             userMentionned = interaction.guild.get_member(int(interaction.data['values'][0]))
             if userMentionned == interaction.user:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous ne pouvez pas faire équipe avec vous-meme !", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous ne pouvez pas faire équipe avec vous-meme ! / You can't make a team with yourself !", ephemeral=True)
             if userMentionned in interaction.guild.get_role(db.get("player_role_id")).members:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné à déjà une équipe, si vous pensez que c'est une erreur, merci de voir avec un admin.", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné à déjà une équipe, si vous pensez que c'est une erreur, merci de voir avec un admin. / The selected player already has a team, if you think this is an error, please see with an admin.", ephemeral=True)
             elif userMentionned in interaction.guild.get_role(db.get("spectator_role_id")).members:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné est inscrit en tant que spectateur, pour y remédier, dites lui d'aller s'inscrire en tant que joueur dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné est inscrit en tant que spectateur, pour y remédier, dites lui d'aller s'inscrire en tant que joueur dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} ! / The selected player is registered as a spectator, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
             elif userMentionned not in interaction.guild.get_role(db.get("registered_role_id")).members:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné n'est pas encore inscrit, pour y remédier, dites lui d'aller s'inscrire en tant que joueur dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné n'est pas encore inscrit, pour y remédier, dites lui d'aller s'inscrire en tant que joueur dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} ! / The selected player is not yet registered, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
             else:
                 await interaction.response.defer()
                 nicknames = await hc.create_team(interaction.user, userMentionned)
@@ -293,18 +293,26 @@ async def on_interaction(interaction: discord.Interaction):
                 await userMentionned.add_roles(teamRole)
                 category = interaction.guild.get_channel(db.get("team_text_channels_category_id"))
                 adminRole = interaction.guild.get_role(db.get("admin_role_id"))
+                VARRole = interaction.guild.get_role(db.get("var_role_id"))
 
-                overwrites = {
-                    interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                    teamRole: discord.PermissionOverwrite(read_messages=True),
-                    adminRole: discord.PermissionOverwrite(read_messages=True),
+                overwritesText = {
+                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                    teamRole: discord.PermissionOverwrite(view_channel=True),
+                    adminRole: discord.PermissionOverwrite(view_channel=True),
                 }
 
-                channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwrites)
-                await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate !", ephemeral=True)
-                await userMentionned.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin.")
+                overwritesVocal = {
+                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                    teamRole: discord.PermissionOverwrite(view_channel=True),
+                    VARRole: discord.PermissionOverwrite(view_channel=True),
+                }
+
+                await category.create_voice_channel(f"team-{teamRole.name}", overwrites=overwritesVocal)
+                channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwritesText)
+                await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! / You are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !", ephemeral=True)
+                await userMentionned.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin. / You are now in a team with {interaction.user.mention} ! Go to the channel {channel.mention} to exchange with your mate ! If this is an error, please contact an admin.", ephemeral=True)
                 embed = discord.Embed(
-                    title="Nouvelle équipe",
+                    title="Nouvelle équipe / New team",
                     description=f"Une nouvelle équipe est apparue / A new team has appeared : {nicknames[0]} ({interaction.user.mention}) & {nicknames[1]} ({userMentionned.mention})",
                     color=discord.Color.green(),
                     timestamp=datetime.now()
@@ -313,16 +321,16 @@ async def on_interaction(interaction: discord.Interaction):
                 await interaction.guild.get_channel(db.get("new_team_channel_id")).send(embed=embed)
 
 
-@bot.tree.command(name='team', description="Créer votre équipe pour finaliser votre inscription !")
+@bot.tree.command(name='team', description="Créer votre équipe pour finaliser votre inscription ! / Create your team to complete your registration !")
 async def team(interaction: discord.Interaction):
     if interaction.user in interaction.guild.get_role(db.get("player_role_id")).members:
-        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous avez deja une equipe !", ephemeral=True)
+        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous avez deja une equipe ! / You already have a team !", ephemeral=True)
     elif interaction.user in interaction.guild.get_role(db.get("spectator_role_id")).members:
-        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes inscrit en tant que spectateur, si jamais vous voulez jouer, rdv dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
+        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes inscrit en tant que spectateur, si jamais vous voulez jouer, rdv dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} ! / You are registered as a spectator, if you want to play, go to the channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
     else:
         view = discord.ui.View()
-        view.add_item(discord.ui.UserSelect(custom_id="team_select", max_values=1, placeholder="Qui sera votre binome ?", min_values=1))
-        await interaction.response.send_message("Indiquez votre binôme", view=view, ephemeral=True)
+        view.add_item(discord.ui.UserSelect(custom_id="team_select", max_values=1, placeholder="Qui sera votre binome ? / Who will be your team mate ?", min_values=1))
+        await interaction.response.send_message("Indiquez votre binôme / Indicate your team mate", view=view, ephemeral=True)
     return
 
 
@@ -351,19 +359,19 @@ async def on_message(message: discord.Message):
 
         elif message.content.startswith("$initmessagebienvenue"):
             view = discord.ui.View(timeout=None)
-            player = discord.ui.Button(style=discord.ButtonStyle.primary, label="Joueur !", custom_id="init_player")
-            spectator = discord.ui.Button(style=discord.ButtonStyle.primary, label="Spectateur !", custom_id="init_spectator")
+            player = discord.ui.Button(style=discord.ButtonStyle.primary, label="Joueur ! / Player !", custom_id="init_player")
+            spectator = discord.ui.Button(style=discord.ButtonStyle.primary, label="Spectateur ! / Spectator !", custom_id="init_spectator")
             view.add_item(player)
             view.add_item(spectator)
             e = discord.Embed(title="Bienvenue sur le serveur ! :wave:", color=discord.Color.green())
-            e.add_field(name="Que venez vous faire sur le serveur ?", value="Si vous venez pour vous battre, cliquez sur le bouton \"Joueur !\", si vous venez pour observer le tournoi, cliquez sur le bouton \"Spectateur !\".", inline=False)
+            e.add_field(name="Que venez vous faire sur le serveur ? / What are you doing on the server ?", value="Si vous venez pour vous battre, cliquez sur le bouton \"Joueur !\", si vous venez pour observer le tournoi, cliquez sur le bouton \"Spectateur !\". / If you are here to play, click on the \"Player !\" button, if you are here to spectate the tournament, click on the \"Spectator !\" button.", inline=False)
             e.set_footer(text=f"©HellBot")
             await message.guild.get_channel(db.get('rules_channel_id')).send(embed=e, view=view)
 
-@bot.command(name='hello')
-async def hello(ctx):
-    """Répond avec un message de salutation"""
-    await ctx.send(f'👋 Bonjour {ctx.author.name}!')
+# @bot.command(name='hello')
+# async def hello(ctx):
+#     """Répond avec un message de salutation"""
+#     await ctx.send(f'👋 Bonjour {ctx.author.name}!')
 
 @bot.command(name='ping')
 async def ping(ctx):

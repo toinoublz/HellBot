@@ -10,8 +10,8 @@ class RegisterModal(ui.Modal):
     def __init__(self):
         super().__init__(title="Inscription")
 
-        surname = ui.TextInput(label="Surnom", placeholder="Quel surnom voulez-vous utiliser pour le tournoi ?", style=discord.TextStyle.short, min_length=2, max_length=32)
-        geoguessrLink = ui.TextInput(label="Lien de votre profil Geoguessr", placeholder="Lien de votre profil sur Geoguessr", style=discord.TextStyle.short)
+        surname = ui.TextInput(label="Surnom / Surname", placeholder="Quel surnom voulez-vous utiliser pour le tournoi ? / What surname do you want to use for the tournament ?", style=discord.TextStyle.short, min_length=2, max_length=32)
+        geoguessrLink = ui.TextInput(label="Lien de votre profil Geoguessr / Geoguessr profile link", placeholder="Lien de votre profil sur Geoguessr / Geoguessr profile link", style=discord.TextStyle.short)
 
         self.add_item(surname)
         self.add_item(geoguessrLink)
@@ -24,12 +24,12 @@ class RegisterModal(ui.Modal):
         geoguessrLink = interaction.data['components'][1]['components'][0]['value']
         member = {"discordId": str(interaction.user.id), "surname": surname, "geoguessrId": geoguessrLink if "www.geoguessr.com/user" not in geoguessrLink else geoguessrLink.split('/')[-1]}
         if not (await hc.is_geoguessr_id_correct(member["geoguessrId"])):
-             await interaction.followup.send(f":warning: {interaction.user.mention} :warning:\n\nLe lien de votre profil Geoguessr semble incorrect, pour le trouver, il faut aller sur https://www.geoguessr.com/me/profile et tout en bas vous avez le lien sous la forme https://www.geoguessr.com/user/xxx). Si vous pensez que c'est une erreur, merci de contacter un admin !", ephemeral=True)
+             await interaction.followup.send(f":warning: {interaction.user.mention} :warning:\n\nLe lien de votre profil Geoguessr semble incorrect, pour le trouver, il faut aller sur https://www.geoguessr.com/me/profile et tout en bas vous avez le lien sous la forme https://www.geoguessr.com/user/xxx). Si vous pensez que c'est une erreur, merci de contacter un admin ! / The link to your Geoguessr profile seems to be incorrect. To find it, go to https://www.geoguessr.com/me/profile and at the very bottom you'll find the link in the form https://www.geoguessr.com/user/xxx.) If you think this is a mistake, please contact an admin!", ephemeral=True)
         else:
             await hc.inscription(member)
             await interaction.user.add_roles(interaction.guild.get_role(db.get("registered_role_id")))
             await interaction.user.remove_roles(interaction.guild.get_role(db.get("spectator_role_id")))
-            await interaction.followup.send(f":tada: Bienvenue dans le tournoi {interaction.user.mention} ! :tada:\n\nVous êtes bien inscrit en tant que joueur, pensez maintenant à créer votre équipe avec la commande `/team`", ephemeral=True)
+            await interaction.followup.send(f":tada: Bienvenue dans le tournoi {interaction.user.mention} ! :tada:\n\nVous êtes bien inscrit en tant que joueur, pensez maintenant à créer votre équipe avec la commande `/team` / You are now registered as a player, please create your team with the `/team` command", ephemeral=True)
             embed = discord.Embed(
                 title="Nouvelle inscription",
                 description=f"{interaction.user.mention} est maintenant inscrit(e) avec le surnom **{member['surname']}**!",
