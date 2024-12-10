@@ -258,6 +258,23 @@ async def on_member_update(before: discord.Member, after: discord.Member):
             embed.set_footer(text=f"ID: {after.id}")
             await logs_channel.send(embed=embed)
 
+@bot.event
+async def on_voice_state_update(
+    member: discord.Member, before: discord.VoiceState, after: discord.VoiceState
+):
+    print('oui')
+    if after.channel and after.channel.id == db.get("voc_create_channel_id"):
+        createdVocal = await after.channel.category.create_voice_channel(f"{member.display_name}")
+        tempVocalsChannelsId = db.get("temp_vocals_channel_id")
+        tempVocalsChannelsId.append(createdVocal.id)
+        db.modify('temp_vocals_channel_id', tempVocalsChannelsId)
+        await member.move_to(createdVocal)
+    if before.channel and before.channel.id in db.get("temp_vocals_channel_id") and len(before.channel.members) == 0:
+        print('del')
+        tempVocalsChannelsId = db.get("temp_vocals_channel_id")
+        tempVocalsChannelsId.remove(before.channel.id)
+        db.modify('temp_vocals_channel_id', tempVocalsChannelsId)
+        await before.channel.delete()
 
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
