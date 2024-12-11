@@ -280,6 +280,7 @@ async def on_interaction(interaction: discord.Interaction):
         if interaction.data['custom_id'] == "init_spectator":
             if interaction.guild.get_role(db.get("registered_role_id")) not in interaction.user.roles:
                 await interaction.user.add_roles(interaction.guild.get_role(db.get("spectator_role_id")))
+                await interaction.user.remove_roles(interaction.guild.get_role(db.get("newbie_role_id")))
                 await interaction.response.send_message(":popcorn: Préparez vos popcorns, vous voici spectateur du tournoi ! / Prepare your popcorns, you are now a spectator of the tournament !", ephemeral=True)
             else:
                 await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin. / You are already registered, if you want to modify your registration, please contact an admin.", ephemeral=True)
