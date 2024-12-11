@@ -29,6 +29,7 @@ class RegisterModal(ui.Modal):
             await hc.inscription(member)
             await interaction.user.add_roles(interaction.guild.get_role(db.get("registered_role_id")))
             await interaction.user.remove_roles(interaction.guild.get_role(db.get("spectator_role_id")))
+            await interaction.user.remove_roles(interaction.guild.get_role(db.get("newbie_role_id")))
             await interaction.followup.send(f":tada: Bienvenue dans le tournoi {interaction.user.mention} ! :tada:\n\nVous êtes bien inscrit en tant que joueur, pensez maintenant à créer votre équipe avec la commande `/team` dans n'importe quel channel textuel. / You are now registered as a player, please create your team with the `/team` command in any text channel.", ephemeral=True)
             embed = discord.Embed(
                 title="Nouvelle inscription",
