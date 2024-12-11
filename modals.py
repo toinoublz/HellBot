@@ -10,8 +10,8 @@ class RegisterModal(ui.Modal):
     def __init__(self):
         super().__init__(title="Inscription")
 
-        surname = ui.TextInput(label="Surnom / Surname", placeholder="Quel surnom voulez-vous utiliser pour le tournoi ? / What surname do you want to use for the tournament ?", style=discord.TextStyle.short, min_length=2, max_length=32)
-        geoguessrLink = ui.TextInput(label="Lien de votre profil Geoguessr / Geoguessr profile link", placeholder="Lien de votre profil sur Geoguessr / Geoguessr profile link", style=discord.TextStyle.short)
+        surname = ui.TextInput(label="Pseudo / Surname", placeholder="Votre pseudo / Your surname", style=discord.TextStyle.short, min_length=2, max_length=32)
+        geoguessrLink = ui.TextInput(label="Geoguessr ID", placeholder="https://www.geoguessr.com/user/x_x_x_x_x_x_x_x_x_x", style=discord.TextStyle.short)
 
         self.add_item(surname)
         self.add_item(geoguessrLink)
@@ -29,7 +29,7 @@ class RegisterModal(ui.Modal):
             await hc.inscription(member)
             await interaction.user.add_roles(interaction.guild.get_role(db.get("registered_role_id")))
             await interaction.user.remove_roles(interaction.guild.get_role(db.get("spectator_role_id")))
-            await interaction.followup.send(f":tada: Bienvenue dans le tournoi {interaction.user.mention} ! :tada:\n\nVous êtes bien inscrit en tant que joueur, pensez maintenant à créer votre équipe avec la commande `/team` / You are now registered as a player, please create your team with the `/team` command", ephemeral=True)
+            await interaction.followup.send(f":tada: Bienvenue dans le tournoi {interaction.user.mention} ! :tada:\n\nVous êtes bien inscrit en tant que joueur, pensez maintenant à créer votre équipe avec la commande `/team` dans n'importe quel channel textuel. / You are now registered as a player, please create your team with the `/team` command in any text channel.", ephemeral=True)
             embed = discord.Embed(
                 title="Nouvelle inscription",
                 description=f"{interaction.user.mention} est maintenant inscrit(e) avec le surnom **{member['surname']}**!",
