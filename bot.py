@@ -325,8 +325,14 @@ async def on_interaction(interaction: discord.Interaction):
 
                 await category.create_voice_channel(f"team-{teamRole.name}", overwrites=overwritesVocal)
                 channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwritesText)
-                await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! / You are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !", ephemeral=True)
-                await interaction.user.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! / You are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !")
+                try:
+                    await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! / You are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !", ephemeral=True)
+                except:
+                    pass
+                try:
+                    await interaction.user.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! / You are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !")
+                except:
+                    pass
                 await userMentionned.send(f":tada: {userMentionned.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin. / You are now in a team with {interaction.user.mention} ! Go to the channel {channel.mention} to exchange with your mate ! If this is an error, please contact an admin.")
 
                 embed = discord.Embed(
