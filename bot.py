@@ -381,6 +381,14 @@ async def on_message(message: discord.Message):
                 except Exception as e:
                     await sync_message.edit(f"❌ Erreur lors de la synchronisation: {str(e)}")
 
+        elif message.content.startswith("$send"):
+            try:
+                message_content = message.content.split("$send ", 1)[1]
+                await message.channel.send(message_content)
+            except Exception as e:
+                pass
+            await message.delete()
+
         elif message.content.startswith("$initmessagebienvenue"):
             view = discord.ui.View(timeout=None)
             player = discord.ui.Button(style=discord.ButtonStyle.primary, label="Joueur ! / Player !", custom_id="init_player")
