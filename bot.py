@@ -63,6 +63,7 @@ async def log_error(error: Exception, ctx = None):
 
     embed.add_field(name="Type d'erreur", value=type(error).__name__, inline=False)
     # embed.add_field(name="Message d'erreur", value=str(error), inline=False)
+    error_details = error_details[-1000:] if len(error_details) > 1000 else error_details
     embed.add_field(name="Traceback", value=f"```python\n{error_details}```", inline=False)
 
     # Ajouter le contexte si disponible
