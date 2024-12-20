@@ -327,7 +327,11 @@ async def on_interaction(interaction: discord.Interaction):
                     teamRole: discord.PermissionOverwrite(view_channel=True),
                     VARRole: discord.PermissionOverwrite(view_channel=True),
                 }
-
+                if len(category.channels) == 50:
+                    count = sum([1 for c in category.guild.categories if c.name.lower().startswith("salons d'équipes")])
+                    newCategory = await interaction.guild.create_category_channel(f"Salons d'équipes {count + 1}")
+                    db.modify("team_text_channels_category_id", newCategory.id)
+                    category = newCategory
                 await category.create_voice_channel(f"team-{teamRole.name}", overwrites=overwritesVocal)
                 channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwritesText)
                 try:
@@ -394,14 +398,25 @@ async def on_message(message: discord.Message):
                 pass
             await message.delete()
 
-        if message.content.startswith("$add_invite"):
+        elif message.content.startswith("$add_invite"):
             _, link, name = message.content.split(" ", 2)
             invitDict = db.get("invit_to_check")
             invitDict[link.split("/")[-1]] = name
             db.modify("invit_to_check", invitDict)
 
-        if message.content == "$refresh_invites_message":
+        elif message.content == "$refresh_invites_message":
             await hc.refresh_invites_message(message.guild, db)
+
+        elif message.content == "$test":
+            category = message.guild.get_channel(db.get("team_text_channels_category_id"))
+            print(category.position)
+            print(len(category.channels))
+            if len(category.channels) > 48:
+                count = sum([1 for c in category.guild.categories if c.name.lower().startswith("salons d'équipes")])
+                newCategory = await message.guild.create_category_channel(f"Salons d'équipes {count + 1}")
+                db.modify("team_text_channels_category_id", newCategory.id)
+            else:
+                print(category.name)
 
         elif message.content.startswith("$initmessagebienvenue"):
             view = discord.ui.View(timeout=None)
