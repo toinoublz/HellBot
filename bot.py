@@ -399,6 +399,20 @@ async def on_message(message: discord.Message):
                 pass
             await message.delete()
 
+        elif message.content == "$stop_inscription":
+            messageToModify = await message.guild.get_channel(db.get("rules_channel_id")).fetch_message(db.get("signup_message_id"))
+            view = discord.ui.View(timeout=None)
+            view.add_item(discord.ui.Button(label=messageToModify.components[0].children[0].label, custom_id=messageToModify.components[0].children[0].custom_id, style=discord.ButtonStyle.secondary, disabled=True))
+            view.add_item(discord.ui.Button(label=messageToModify.components[0].children[1].label, custom_id=messageToModify.components[0].children[1].custom_id, style=messageToModify.components[0].children[1].style))
+            await messageToModify.edit(content=messageToModify.content, embed=messageToModify.embeds[0], view=view)
+
+        elif message.content == "$start_inscription":
+            messageToModify = await message.guild.get_channel(db.get("rules_channel_id")).fetch_message(db.get("signup_message_id"))
+            view = discord.ui.View(timeout=None)
+            view.add_item(discord.ui.Button(label=messageToModify.components[0].children[0].label, custom_id=messageToModify.components[0].children[0].custom_id, style=discord.ButtonStyle.primary, disabled=False))
+            view.add_item(discord.ui.Button(label=messageToModify.components[0].children[1].label, custom_id=messageToModify.components[0].children[1].custom_id, style=messageToModify.components[0].children[1].style))
+            await messageToModify.edit(content=messageToModify.content, embed=messageToModify.embeds[0], view=view)
+
         elif message.content.startswith("$add_invite"):
             _, link, name = message.content.split(" ", 2)
             invitDict = db.get("invit_to_check")
@@ -429,6 +443,7 @@ async def on_message(message: discord.Message):
             e.add_field(name="Que venez vous faire sur le serveur ? / What are you doing on the server ?", value="Si vous venez pour vous battre, cliquez sur le bouton \"Joueur !\", si vous venez pour observer le tournoi, cliquez sur le bouton \"Spectateur !\". / If you are here to play, click on the \"Player !\" button, if you are here to spectate the tournament, click on the \"Spectator !\" button.", inline=False)
             e.set_footer(text=f"©HellBot")
             await message.guild.get_channel(db.get('rules_channel_id')).send(embed=e, view=view)
+            db.modify("signup_message_id", message.id)
 
 # @bot.command(name='hello')
 # async def hello(ctx):
