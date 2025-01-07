@@ -383,7 +383,7 @@ async def on_interaction(interaction: discord.Interaction):
             bet1 = interaction.data['custom_id'].split('.')[1]
             bet2 = interaction.data['custom_id'].split('.')[2]
             bet3 = interaction.data['custom_id'].split('.')[3]
-            betsMessage = f"Voici le récap de vos paris ! / Here's the recap of your bets !\n\n- :first_place: : {bet1}\n- :second_place: : {bet2}\n- :third_place: : {bet3}\n\nVoulez-vous que ce pari soit anonyme ou pas ? / Do you want this bet to be anonymous or not ?\n\n:one: Oui / Yes\n:two: Non / No"
+            betsMessage = f"Voici le récap de vos paris ! / Here's the recap of your bets !\n\n- :first_place: : {bet1}\n- :second_place: : {bet2}\n- :third_place: : {bet3}\n\nVoulez-vous que ce pari soit anonyme ou pas ? / Do you want this bet to be anonymous or not ?\n"
             view = discord.ui.View()
             view.add_item(discord.ui.Button(label="Oui / Yes", custom_id=f"anonymous.yes.{bet1}.{bet2}.{bet3}", style=discord.ButtonStyle.green))
             view.add_item(discord.ui.Button(label="Non / No", custom_id=f"anonymous.no.{bet1}.{bet2}.{bet3}", style=discord.ButtonStyle.red))
