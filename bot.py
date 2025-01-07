@@ -8,6 +8,7 @@ import traceback
 from datetime import datetime
 import modals as md
 import hellcup as hc
+from math import sqrt, ceil
 
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
@@ -353,9 +354,51 @@ async def on_interaction(interaction: discord.Interaction):
                 )
                 await interaction.guild.get_channel(db.get("registration_channel_id")).send(embed=embed)
                 await interaction.guild.get_channel(db.get("new_team_channel_id")).send(embed=embed)
+        elif 'bet1' in interaction.data['custom_id']:
+            bet1 = interaction.data['custom_id'].split('.')[1]
+            buttons = []
+            for component in interaction.message.components:
+                buttons.extend([child for child in component.children])
+            view = discord.ui.View()
+            for button in buttons:
+                if button.label == bet1:
+                    view.add_item(discord.ui.Button(label=button.label + " (1st)", style=discord.ButtonStyle.green, disabled=True))
+                else:
+                    view.add_item(discord.ui.Button(label=button.label, custom_id=f"bet2.{bet1}.{button.label}", style=button.style, disabled=True if button.style == discord.ButtonStyle.green else False))
+            await interaction.response.edit_message(content="Quelle équipe va finir 2nde de cette Hellcup d'après vous ? / Which team will finish 2nd of this Hellcup ?",view=view)
+        elif 'bet2' in interaction.data['custom_id']:
+            bet1 = interaction.data['custom_id'].split('.')[1]
+            bet2 = interaction.data['custom_id'].split('.')[2]
+            buttons = []
+            for component in interaction.message.components:
+                buttons.extend([child for child in component.children])
+            view = discord.ui.View()
+            for button in buttons:
+                if button.label == bet2:
+                    view.add_item(discord.ui.Button(label=button.label + " (2nd)", style=discord.ButtonStyle.green, disabled=True))
+                else:
+                    view.add_item(discord.ui.Button(label=button.label, custom_id=f"bet3.{bet1}.{bet2}.{button.label}", style=button.style, disabled=True if button.style == discord.ButtonStyle.green else False))
+            await interaction.response.edit_message(content="Quelle équipe va finir 2nde de cette Hellcup d'après vous ? / Which team will finish 2nd of this Hellcup ?",view=view)
+        elif 'bet3' in interaction.data['custom_id']:
+            bet1 = interaction.data['custom_id'].split('.')[1]
+            bet2 = interaction.data['custom_id'].split('.')[2]
+            bet3 = interaction.data['custom_id'].split('.')[3]
+            betsMessage = f"Voici le récap de vos paris ! / Here's the recap of your bets !\n\n- :first_place: : {bet1}\n- :second_place: : {bet2}\n- :third_place: : {bet3}\n\nVoulez-vous que ce pari soit anonyme ou pas ? / Do you want this bet to be anonymous or not ?\n\n:one: Oui / Yes\n:two: Non / No"
+            view = discord.ui.View()
+            view.add_item(discord.ui.Button(label="Oui / Yes", custom_id=f"anonymous.yes.{bet1}.{bet2}.{bet3}", style=discord.ButtonStyle.green))
+            view.add_item(discord.ui.Button(label="Non / No", custom_id=f"anonymous.no.{bet1}.{bet2}.{bet3}", style=discord.ButtonStyle.red))
+            await interaction.response.edit_message(content=betsMessage, view=view)
+        elif 'anonymous' in interaction.data['custom_id']:
+            bet1 = interaction.data['custom_id'].split('.')[2]
+            bet2 = interaction.data['custom_id'].split('.')[3]
+            bet3 = interaction.data['custom_id'].split('.')[4]
+            anonymous = True if interaction.data['custom_id'].split('.')[1] == 'yes' else False
+            await interaction.response.edit_message(content=f"Parfait ! / Perfect !\n\nMerci pour votre pari, restez connecté pour avoir les résultats ! / Thank you for your bet, stay tuned to get the results !", view=None)
+            messageToSend = f"{'Anonymous' if anonymous else interaction.user.mention} a placé un pari / has placed a bet : \n\n- :first_place: : {bet1}\n- :second_place: : {bet2}\n- :third_place: : {bet3}\n\nVotez vous aussi en utilisant la commande `/bet` ! / Place your own bet using the `/bet` command !"
+            await hc.place_bet(interaction.user.id, bet1, bet2, bet3, anonymous)
+            await interaction.guild.get_channel(db.get("bets_channel_id")).send(messageToSend)
 
-
-@bot.tree.command(name='team', description="Créer votre équipe pour finaliser votre inscription ! / Create your team to complete your registration !")
+@bot.tree.command(name='team', description="Créer votre équipe !/Create your team !")
 async def team(interaction: discord.Interaction):
     if interaction.user in interaction.guild.get_role(db.get("player_role_id")).members:
         await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous avez deja une equipe ! / You already have a team !", ephemeral=True)
@@ -366,6 +409,18 @@ async def team(interaction: discord.Interaction):
         view.add_item(discord.ui.UserSelect(custom_id="team_select", max_values=1, placeholder="Qui sera votre binome ? / Who will be your team mate ?", min_values=1))
         await interaction.response.send_message("Indiquez votre binôme / Indicate your team mate", view=view, ephemeral=True)
     return
+
+@bot.tree.command(name='bet', description="Pari sur le podium de la Hellcup / Bet on the Hellcup's podium")
+async def bet(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    if interaction.user.id in await hc.get_bets_discordIds():
+        await interaction.followup.send(":x: Vous avez déjà parié pour cette édition. / You have already bet for this edition.", ephemeral=True)
+    else:
+        teamsList = await hc.get_qualified_teams()
+        view = discord.ui.View()
+        for team in teamsList:
+            view.add_item(discord.ui.Button(label=team, custom_id=f"bet1.{team}", style=discord.ButtonStyle.primary))
+        await interaction.followup.send("Quelle équipe va remporter cette Hellcup d'après vous ? / Which team will win this Hellcup ?", view=view, ephemeral=True)
 
 
 

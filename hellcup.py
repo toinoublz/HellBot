@@ -28,3 +28,12 @@ async def refresh_invites_message(guild: discord.Guild, db: DB):
     content = "Liste des invitations sauvegardées actuelles :\n- "
     content += '\n- '.join([f"{invitesToCheck[key]} ({key}) : {value} utilisation{'' if value == 1 else 's'}" for key, value in invites.items()])
     await message.edit(content=content)
+
+async def get_qualified_teams():
+    return await gu.get_qualified_teams_names()
+
+async def get_bets_discordIds():
+    return await gu.get_bets_discordIds()
+
+async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool):
+    await gu.place_bet(discordId, bet1, bet2, bet3, isAnonymous)
