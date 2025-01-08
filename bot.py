@@ -378,7 +378,7 @@ async def on_interaction(interaction: discord.Interaction):
                     view.add_item(discord.ui.Button(label=button.label + " (2nd)", style=discord.ButtonStyle.green, disabled=True))
                 else:
                     view.add_item(discord.ui.Button(label=button.label, custom_id=f"bet3.{bet1}.{bet2}.{button.label}", style=button.style, disabled=True if button.style == discord.ButtonStyle.green else False))
-            await interaction.response.edit_message(content="Quelle équipe va finir 2nde de cette Hellcup d'après vous ? / Which team will finish 2nd of this Hellcup ?",view=view)
+            await interaction.response.edit_message(content="Quelle équipe va finir 3ème de cette Hellcup d'après vous ? / Which team will finish 3rd of this Hellcup ?",view=view)
         elif 'bet3' in interaction.data['custom_id']:
             bet1 = interaction.data['custom_id'].split('.')[1]
             bet2 = interaction.data['custom_id'].split('.')[2]
