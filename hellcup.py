@@ -35,5 +35,5 @@ async def get_qualified_teams():
 async def get_bets_discordIds():
     return await gu.get_bets_discordIds()
 
-async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool):
-    await gu.place_bet(discordId, bet1, bet2, bet3, isAnonymous)
+async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str):
+    await gu.place_bet(discordId, bet1, bet2, bet3, isAnonymous, discordName)
