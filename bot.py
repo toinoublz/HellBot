@@ -395,7 +395,7 @@ async def on_interaction(interaction: discord.Interaction):
             anonymous = True if interaction.data['custom_id'].split('.')[1] == 'yes' else False
             await interaction.response.edit_message(content=f"Parfait ! / Perfect !\n\nMerci pour votre pari, restez connecté pour avoir les résultats ! / Thank you for your bet, stay tuned to get the results !", view=None)
             messageToSend = f"{'Anonymous' if anonymous else interaction.user.mention} a placé un pari / has placed a bet : \n\n- :first_place: : {bet1}\n- :second_place: : {bet2}\n- :third_place: : {bet3}\n\nVotez vous aussi en utilisant la commande `/bet` ! / Place your own bet using the `/bet` command !"
-            await hc.place_bet(interaction.user.id, bet1, bet2, bet3, anonymous)
+            await hc.place_bet(interaction.user.id, bet1, bet2, bet3, anonymous, interaction.user.display_name)
             await interaction.guild.get_channel(db.get("bets_channel_id")).send(messageToSend)
 
 @bot.tree.command(name='team', description="Créer votre équipe !/Create your team !")

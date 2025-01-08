@@ -82,11 +82,11 @@ async def get_bets_discordIds():
     bet_discordIds = [int(bet["DiscordId"]) for bet in data]
     return bet_discordIds
 
-async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool):
+async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str):
     clientg = await connect_gsheet_api()
     spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
     worksheet = await spreadsheet.worksheet("Bets")
-    await worksheet.append_row([str(discordId), bet1, bet2, bet3, isAnonymous])
+    await worksheet.append_row([str(discordId), bet1, bet2, bet3, isAnonymous, discordName])
 
 
 if __name__ == "__main__":
