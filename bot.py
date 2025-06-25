@@ -271,7 +271,7 @@ async def on_voice_state_update(
     member: discord.Member, before: discord.VoiceState, after: discord.VoiceState
 ):
     if after.channel and after.channel.id == db.get("voc_create_channel_id"):
-        createdVocal = await after.channel.category.create_voice_channel(f"{member.display_name}")
+        createdVocal = await after.channel.category.create_voice_channel(f"{member.name}")
         tempVocalsChannelsId = db.get("temp_vocals_channel_id")
         tempVocalsChannelsId.append(createdVocal.id)
         db.modify('temp_vocals_channel_id', tempVocalsChannelsId)
