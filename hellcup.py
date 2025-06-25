@@ -1,12 +1,17 @@
 import json
+
 import aiohttp
-import gspread_utilities as gu
 import discord
+
+import gspread_utilities as gu
 from DB import DB
+
 
 async def is_geoguessr_id_correct(geoguessr_id: str):
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'https://www.geoguessr.com/api/v3/users/{geoguessr_id}') as response:
+        async with session.get(
+            f"https://www.geoguessr.com/api/v3/users/{geoguessr_id}"
+        ) as response:
             if response.ok:
                 return f":flag_{(await response.json())['countryCode'].lower()}:"
             else:
@@ -208,41 +213,68 @@ def flag_to_emoji(flag: str):
     }
     return flag_shortcodes_to_emojis[flag]
 
+
 def get_flag(discordId: int):
-    inscriptionData = json.load(open('inscriptions.json', 'r'))
+    inscriptionData = json.load(open("inscriptions.json", "r"))
     return flag_to_emoji(inscriptionData["players"][str(discordId)]["flag"])
 
+
 async def inscription(member: dict):
-    inscriptionData = json.load(open('inscriptions.json', 'r'))
+    inscriptionData = json.load(open("inscriptions.json", "r"))
     inscriptionData["players"][member["discordId"]] = member
-    json.dump(inscriptionData, open('inscriptions.json', 'w'))
+    json.dump(inscriptionData, open("inscriptions.json", "w"))
+
 
 def team_already_exists(member1: discord.Member, member2: discord.Member):
-    inscriptionData = json.load(open('inscriptions.json', 'r'))
-    return f"{member1.id}_{member2.id}" in inscriptionData["teams"] or f"{member2.id}_{member1.id}" in inscriptionData["teams"]
+    inscriptionData = json.load(open("inscriptions.json", "r"))
+    return (
+        f"{member1.id}_{member2.id}" in inscriptionData["teams"]
+        or f"{member2.id}_{member1.id}" in inscriptionData["teams"]
+    )
+
 
 async def create_team(member1: discord.Member, member2: discord.Member):
-    inscriptionData = json.load(open('inscriptions.json', 'r'))
+    inscriptionData = json.load(open("inscriptions.json", "r"))
     member1 = inscriptionData["players"][str(member1.id)]
     member2 = inscriptionData["players"][str(member2.id)]
-    inscriptionData["teams"][f"{member1['discordId']}_{member2['discordId']}"] = [member1, member2]
-    json.dump(inscriptionData, open('inscriptions.json', 'w'))
+    inscriptionData["teams"][f"{member1['discordId']}_{member2['discordId']}"] = [
+        member1,
+        member2,
+    ]
+    json.dump(inscriptionData, open("inscriptions.json", "w"))
     return member1["surname"], member2["surname"]
 
+
 async def refresh_invites_message(guild: discord.Guild, db: DB):
-    message = await guild.get_channel(db.get('registration_channel_id')).fetch_message(db.get('invit_message_id'))
-    invitesToCheck = db.get('invit_to_check')
+    message = await guild.get_channel(db.get("registration_channel_id")).fetch_message(
+        db.get("invit_message_id")
+    )
+    invitesToCheck = db.get("invit_to_check")
     guildInvites = await guild.invites()
-    invites = {invite.code: invite.uses for invite in guildInvites if invite.code in invitesToCheck.keys()}
+    invites = {
+        invite.code: invite.uses
+        for invite in guildInvites
+        if invite.code in invitesToCheck.keys()
+    }
     content = "Liste des invitations sauvegardées actuelles :\n- "
-    content += '\n- '.join([f"{invitesToCheck[key]} ({key}) : {value} utilisation{'' if value == 1 else 's'}" for key, value in invites.items()])
+    content += "\n- ".join(
+        [
+            f"{invitesToCheck[key]} ({key}) : {value} utilisation{'' if value == 1 else 's'}"
+            for key, value in invites.items()
+        ]
+    )
     await message.edit(content=content)
+
 
 async def get_qualified_teams():
     return await gu.get_qualified_teams_names()
 
+
 async def get_bets_discordIds():
     return await gu.get_bets_discordIds()
 
-async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str):
+
+async def place_bet(
+    discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str
+):
     await gu.place_bet(discordId, bet1, bet2, bet3, isAnonymous, discordName)

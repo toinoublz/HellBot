@@ -1,9 +1,11 @@
+import asyncio
+
+import discord
 import gspread_asyncio
 import gspread_formatting
 from google.oauth2.service_account import Credentials
 from oauth2client.service_account import ServiceAccountCredentials
-import discord
-import asyncio
+
 
 def get_creds():
     # To obtain a service account JSON file, follow these steps:
@@ -32,11 +34,14 @@ async def connect_gsheet_api() -> gspread_asyncio.AsyncioGspreadClient:
     clientg = await agcm.authorize()
     return clientg
 
+
 async def gspread_new_registration(member: dict):
     clientg = await connect_gsheet_api()
     spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
     worksheet = await spreadsheet.worksheet("Inscrits")
-    await worksheet.append_row([member["discordId"], member["geoguessrId"], member["surname"], 0])
+    await worksheet.append_row(
+        [member["discordId"], member["geoguessrId"], member["surname"], 0]
+    )
     return
 
 
@@ -61,7 +66,17 @@ async def gspread_new_team(member1: discord.Member, member2: discord.Member):
         if player1Updated and player2Updated:
             break
     worksheet = await spreadsheet.worksheet("Teams")
-    await worksheet.append_row([team["member1_discordId"], team["member1_geoguessrId"], team["member2_discordId"], team["member2_geoguessrId"], team["member1_surname"], team["member2_surname"], team["member1_surname"] + '_' + team["member2_surname"]])
+    await worksheet.append_row(
+        [
+            team["member1_discordId"],
+            team["member1_geoguessrId"],
+            team["member2_discordId"],
+            team["member2_geoguessrId"],
+            team["member1_surname"],
+            team["member2_surname"],
+            team["member1_surname"] + "_" + team["member2_surname"],
+        ]
+    )
 
     return [team["member1_surname"], team["member2_surname"]]
 
@@ -74,6 +89,7 @@ async def get_qualified_teams_names():
     qualified_teams_names = [team["Nom d'équipe"] for team in data]
     return qualified_teams_names
 
+
 async def get_bets_discordIds():
     clientg = await connect_gsheet_api()
     spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
@@ -82,11 +98,16 @@ async def get_bets_discordIds():
     bet_discordIds = [int(bet["DiscordId"]) for bet in data]
     return bet_discordIds
 
-async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str):
+
+async def place_bet(
+    discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str
+):
     clientg = await connect_gsheet_api()
     spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
     worksheet = await spreadsheet.worksheet("Bets")
-    await worksheet.append_row([str(discordId), bet1, bet2, bet3, isAnonymous, discordName])
+    await worksheet.append_row(
+        [str(discordId), bet1, bet2, bet3, isAnonymous, discordName]
+    )
 
 
 if __name__ == "__main__":
