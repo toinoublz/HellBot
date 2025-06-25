@@ -195,8 +195,6 @@ async def on_member_join(member: discord.Member):
     if not logs_channel_id:
         return
 
-    await member.add_roles(member.guild.get_role(db.get("newbie_role_id")))
-
     try:
         await hc.refresh_invites_message(member.guild, db)
     except:
@@ -557,12 +555,6 @@ async def on_message(message: discord.Message):
                 embed=messageToModify.embeds[0],
                 view=view,
             )
-
-        elif message.content.startswith("$add_invite"):
-            _, link, name = message.content.split(" ", 2)
-            invitDict = db.get("invit_to_check")
-            invitDict[link.split("/")[-1]] = name
-            db.modify("invit_to_check", invitDict)
 
         elif message.content == "$refresh_invites_message":
             await hc.refresh_invites_message(message.guild, db)

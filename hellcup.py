@@ -244,28 +244,6 @@ async def create_team(member1: discord.Member, member2: discord.Member):
     json.dump(inscriptionData, open("inscriptions.json", "w"))
     return member1["surname"], member2["surname"]
 
-
-async def refresh_invites_message(guild: discord.Guild, db: DB):
-    message = await guild.get_channel(db.get("registration_channel_id")).fetch_message(
-        db.get("invit_message_id")
-    )
-    invitesToCheck = db.get("invit_to_check")
-    guildInvites = await guild.invites()
-    invites = {
-        invite.code: invite.uses
-        for invite in guildInvites
-        if invite.code in invitesToCheck.keys()
-    }
-    content = "Liste des invitations sauvegardées actuelles :\n- "
-    content += "\n- ".join(
-        [
-            f"{invitesToCheck[key]} ({key}) : {value} utilisation{'' if value == 1 else 's'}"
-            for key, value in invites.items()
-        ]
-    )
-    await message.edit(content=content)
-
-
 async def get_qualified_teams():
     return await gu.get_qualified_teams_names()
 
