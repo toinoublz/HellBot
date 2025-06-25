@@ -1,6 +1,6 @@
 from DB import DB
 
-db = DB("hellbot", verbose=False)
+db = DB("hellbot_gg", verbose=False)
 
 db.add('sign_up_channel_id', 1384832479810027530)
 db.add("registered_role_id", 1387395361840173177)

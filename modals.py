@@ -5,7 +5,7 @@ import hellcup as hc
 import DB
 from datetime import datetime
 
-db = DB.DB("hellbot")
+db = DB.DB("hellbot_gg")
 
 class RegisterModal(ui.Modal):
     def __init__(self):

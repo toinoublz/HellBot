@@ -18,7 +18,7 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="/", intents=intents)
 
-db = DB.DB("hellbot")
+db = DB.DB("hellbot_gg")
 
 # Variable globale pour stocker les invitations
 invites_before = {}
