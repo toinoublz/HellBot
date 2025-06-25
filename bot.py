@@ -31,14 +31,6 @@ async def on_ready():
         invites_before[guild.id] = await guild.invites()
         invites_before[guild.id] = {inv.code: inv for inv in invites_before[guild.id]}
 
-    hellcup_guild = bot.get_guild(db.get("hellcup_guild_id"))
-    await bot.change_presence(
-        activity=discord.Activity(
-            name=f"{len(hellcup_guild.members)} gens (trop) cools !",
-            type=discord.ActivityType.watching,
-        )
-    )
-
 async def log_error(error: Exception, ctx = None):
     """Envoie les erreurs dans le canal des super logs"""
     logs_channel_id = db.get("logs_channel_id")
@@ -60,7 +52,7 @@ async def log_error(error: Exception, ctx = None):
     # Ajouter les détails de l'erreur
     error_details = "".join(traceback.format_exception(type(error), error, error.__traceback__))
     if len(error_details) > 1024:  # Discord limite la taille des fields
-        error_details = error_details[:1021] + "..."
+        error_details = error_details[:-1021] + "..."
 
     embed.add_field(name="Type d'erreur", value=type(error).__name__, inline=False)
     # embed.add_field(name="Message d'erreur", value=str(error), inline=False)
@@ -246,6 +238,15 @@ async def on_member_remove(member: discord.Member):
 async def on_member_update(before: discord.Member, after: discord.Member):
     # Vérifier si le nom a changé
     if before.display_name != after.display_name:
+
+        flag = hc.get_flag(after.id)
+
+        if not after.display_name.startswith(flag + " "):
+            try:
+                await after.edit(nick=f"{flag} {after.display_name}")
+            except:
+                pass
+            
         logs_channel_id = db.get("logs_channel_id")
         if not logs_channel_id:
             return
@@ -286,8 +287,6 @@ async def on_interaction(interaction: discord.Interaction):
     if 'custom_id' in interaction.data:
         if interaction.data['custom_id'] == "init_spectator":
             if interaction.guild.get_role(db.get("registered_role_id")) not in interaction.user.roles:
-                await interaction.user.add_roles(interaction.guild.get_role(db.get("spectator_role_id")))
-                await interaction.user.remove_roles(interaction.guild.get_role(db.get("newbie_role_id")))
                 await interaction.response.send_message(":popcorn: Préparez vos popcorns, vous voici spectateur du tournoi ! / Prepare your popcorns, you are now a spectator of the tournament !", ephemeral=True)
             else:
                 await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes déjà inscrit, si vous voulez modifier votre inscription, merci de contacter un admin. / You are already registered, if you want to modify your registration, please contact an admin.", ephemeral=True)
@@ -300,51 +299,25 @@ async def on_interaction(interaction: discord.Interaction):
             userMentionned = interaction.guild.get_member(int(interaction.data['values'][0]))
             if userMentionned == interaction.user:
                 await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous ne pouvez pas faire équipe avec vous-meme ! / You can't make a team with yourself !", ephemeral=True)
-            if userMentionned in interaction.guild.get_role(db.get("player_role_id")).members:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné à déjà une équipe, si vous pensez que c'est une erreur, merci de voir avec un admin. / The selected player already has a team, if you think this is an error, please see with an admin.", ephemeral=True)
-            elif userMentionned in interaction.guild.get_role(db.get("spectator_role_id")).members:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné est inscrit en tant que spectateur, pour y remédier, dites lui d'aller s'inscrire en tant que joueur dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} ! / The selected player is registered as a spectator, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
             elif userMentionned not in interaction.guild.get_role(db.get("registered_role_id")).members:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné n'est pas encore inscrit, pour y remédier, dites lui d'aller s'inscrire en tant que joueur dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} ! / The selected player is not yet registered, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
+                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nLe joueur selectionné n'est pas encore inscrit, pour y remédier, dites lui d'aller s'inscrire en tant que joueur dans le channel {interaction.guild.get_channel(db.get('sign_up_channel_id')).mention} ! / The selected player is not yet registered, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(db.get('sign_up_channel_id')).mention} !", ephemeral=True)
             else:
                 await interaction.response.defer()
+                if hc.team_already_exists(interaction.user, userMentionned):
+                    await interaction.followup.send(f":x: Vous faites deja une equipe avec {userMentionned.mention} ! / You are already in a team with {userMentionned.mention} !", ephemeral=True)
+                    return
+                
                 nicknames = await hc.create_team(interaction.user, userMentionned)
-                await interaction.user.add_roles(interaction.guild.get_role(db.get("player_role_id")))
-                await userMentionned.add_roles(interaction.guild.get_role(db.get("player_role_id")))
-                teamRole = await interaction.guild.create_role(name='_'.join(nicknames))
-                await interaction.user.add_roles(teamRole)
-                await userMentionned.add_roles(teamRole)
-                category = interaction.guild.get_channel(db.get("team_text_channels_category_id"))
-                adminRole = interaction.guild.get_role(db.get("admin_role_id"))
-                VARRole = interaction.guild.get_role(db.get("var_role_id"))
 
-                overwritesText = {
-                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                    teamRole: discord.PermissionOverwrite(view_channel=True),
-                    adminRole: discord.PermissionOverwrite(view_channel=True),
-                }
-
-                overwritesVocal = {
-                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                    teamRole: discord.PermissionOverwrite(view_channel=True),
-                    VARRole: discord.PermissionOverwrite(view_channel=True),
-                }
-                if len(category.channels) == 50:
-                    count = sum([1 for c in category.guild.categories if c.name.lower().startswith("salons d'équipes")])
-                    newCategory = await interaction.guild.create_category_channel(f"Salons d'équipes {count + 1}")
-                    db.modify("team_text_channels_category_id", newCategory.id)
-                    category = newCategory
-                await category.create_voice_channel(f"team-{teamRole.name}", overwrites=overwritesVocal)
-                channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwritesText)
                 try:
-                    await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! / You are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !", ephemeral=True)
+                    await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! / You are now in a team with {userMentionned.mention} !", ephemeral=True)
                 except:
                     pass
                 try:
-                    await interaction.user.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! / You are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !")
+                    await interaction.user.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! / You are now in a team with {userMentionned.mention} !")
                 except:
                     pass
-                await userMentionned.send(f":tada: {userMentionned.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin. / You are now in a team with {interaction.user.mention} ! Go to the channel {channel.mention} to exchange with your mate ! If this is an error, please contact an admin.")
+                await userMentionned.send(f":tada: {userMentionned.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! Si jamais c'est une erreur, merci de contacter un admin. / You are now in a team with {interaction.user.mention} ! If this is an error, please contact an admin.")
 
                 embed = discord.Embed(
                     title="Nouvelle équipe / New team",
@@ -353,7 +326,8 @@ async def on_interaction(interaction: discord.Interaction):
                     timestamp=datetime.now()
                 )
                 await interaction.guild.get_channel(db.get("registration_channel_id")).send(embed=embed)
-                await interaction.guild.get_channel(db.get("new_team_channel_id")).send(embed=embed)
+                await interaction.guild.get_channel(db.get("new_teams_channel_id")).send(embed=embed)
+
         elif 'bet1' in interaction.data['custom_id']:
             bet1 = interaction.data['custom_id'].split('.')[1]
             buttons = []
@@ -400,10 +374,8 @@ async def on_interaction(interaction: discord.Interaction):
 
 @bot.tree.command(name='team', description="Créer votre équipe !/Create your team !")
 async def team(interaction: discord.Interaction):
-    if interaction.user in interaction.guild.get_role(db.get("player_role_id")).members:
-        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous avez deja une equipe ! / You already have a team !", ephemeral=True)
-    elif interaction.user in interaction.guild.get_role(db.get("spectator_role_id")).members:
-        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous êtes inscrit en tant que spectateur, si jamais vous voulez jouer, rdv dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} ! / You are registered as a spectator, if you want to play, go to the channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !", ephemeral=True)
+    if interaction.user not in interaction.guild.get_role(db.get("registered_role_id")).members:
+        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous n'êtes pas inscrit en tant que joueur, pour ce faire, rdv dans le channel {interaction.guild.get_channel(db.get('sign_up_channel_id')).mention} ! / You aren't registered as a player, to do so, go to the channel {interaction.guild.get_channel(db.get('sign_up_channel_id')).mention} !", ephemeral=True)
     else:
         view = discord.ui.View()
         view.add_item(discord.ui.UserSelect(custom_id="team_select", max_values=1, placeholder="Qui sera votre binome ? / Who will be your team mate ?", min_values=1))
@@ -455,14 +427,14 @@ async def on_message(message: discord.Message):
             await message.delete()
 
         elif message.content == "$stop_inscription":
-            messageToModify = await message.guild.get_channel(db.get("rules_channel_id")).fetch_message(db.get("signup_message_id"))
+            messageToModify = await message.guild.get_channel(db.get("sign_up_channel_id")).fetch_message(db.get("signup_message_id"))
             view = discord.ui.View(timeout=None)
             view.add_item(discord.ui.Button(label=messageToModify.components[0].children[0].label, custom_id=messageToModify.components[0].children[0].custom_id, style=discord.ButtonStyle.secondary, disabled=True))
             view.add_item(discord.ui.Button(label=messageToModify.components[0].children[1].label, custom_id=messageToModify.components[0].children[1].custom_id, style=messageToModify.components[0].children[1].style))
             await messageToModify.edit(content=messageToModify.content, embed=messageToModify.embeds[0], view=view)
 
         elif message.content == "$start_inscription":
-            messageToModify = await message.guild.get_channel(db.get("rules_channel_id")).fetch_message(db.get("signup_message_id"))
+            messageToModify = await message.guild.get_channel(db.get("sign_up_channel_id")).fetch_message(db.get("signup_message_id"))
             view = discord.ui.View(timeout=None)
             view.add_item(discord.ui.Button(label=messageToModify.components[0].children[0].label, custom_id=messageToModify.components[0].children[0].custom_id, style=discord.ButtonStyle.primary, disabled=False))
             view.add_item(discord.ui.Button(label=messageToModify.components[0].children[1].label, custom_id=messageToModify.components[0].children[1].custom_id, style=messageToModify.components[0].children[1].style))
@@ -497,8 +469,8 @@ async def on_message(message: discord.Message):
             e = discord.Embed(title="Bienvenue sur le serveur ! :wave:", color=discord.Color.green())
             e.add_field(name="Que venez vous faire sur le serveur ? / What are you doing on the server ?", value="Si vous venez pour vous battre, cliquez sur le bouton \"Joueur !\", si vous venez pour observer le tournoi, cliquez sur le bouton \"Spectateur !\". / If you are here to play, click on the \"Player !\" button, if you are here to spectate the tournament, click on the \"Spectator !\" button.", inline=False)
             e.set_footer(text=f"©HellBot")
-            await message.guild.get_channel(db.get('rules_channel_id')).send(embed=e, view=view)
-            db.modify("signup_message_id", message.id)
+            signupMessage = await message.guild.get_channel(db.get('sign_up_channel_id')).send(embed=e, view=view)
+            db.modify("signup_message_id", signupMessage.id)
 
 # @bot.command(name='hello')
 # async def hello(ctx):
