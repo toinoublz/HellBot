@@ -63,7 +63,7 @@ class RegisterModal(ui.Modal):
                 interaction.guild.get_role(db.get("registered_role_id"))
             )
             await interaction.followup.send(
-                f":tada: Bienvenue dans le tournoi {interaction.user.mention} ! :tada:\n\nYou are now registered as a player, please create your team with the `/team` command in any text channel.",
+                f":tada: Welcome to the tourney {interaction.user.mention} ! :tada:\n\nYou are now registered as a player, please create your team with the `/team` command in any text channel.",
                 ephemeral=True,
             )
             embed = discord.Embed(

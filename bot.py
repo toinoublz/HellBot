@@ -296,14 +296,20 @@ async def on_member_remove(member: discord.Member):
 async def on_member_update(before: discord.Member, after: discord.Member):
     # Vérifier si le nom a changé
     if before.display_name != after.display_name:
+        tempName = None
 
-        flag = hc.get_flag(after.id)
+        try:
+            flag = hc.get_flag(after.id)
 
-        if not after.display_name.startswith(flag + " "):
-            try:
-                await after.edit(nick=f"{flag} {after.display_name}")
-            except:
-                pass
+            if not after.display_name.startswith(flag + " "):
+                tempName = after.display_name
+                try:
+                    await after.edit(nick=f"{flag} {after.display_name}")
+                except:
+                    pass
+
+        except KeyError:
+            pass
 
         logs_channel_id = db.get("logs_channel_id")
         if not logs_channel_id:
@@ -322,7 +328,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
                 name="Ancien pseudo", value=before.display_name, inline=True
             )
             embed.add_field(
-                name="Nouveau pseudo", value=after.display_name, inline=True
+                name="Nouveau pseudo", value=(after.display_name + f" ({tempName})") if tempName is not None else after.display_name, inline=True
             )
             embed.set_thumbnail(
                 url=after.avatar.url if after.avatar else after.default_avatar.url
@@ -363,7 +369,7 @@ async def on_interaction(interaction: discord.Interaction):
                 not in interaction.user.roles
             ):
                 await interaction.response.send_message(
-                    ":popcorn: Prepare your popcorns, you are now a spectator of the tournament !",
+                    ":popcorn: Prepare your popcorns, you are now a spectator of the tourney !",
                     ephemeral=True,
                 )
             else:
@@ -556,29 +562,29 @@ async def on_message(message: discord.Message):
                 view=view,
             )
 
-        elif message.content == "$refresh_invites_message":
-            await hc.refresh_invites_message(message.guild, db)
+        # elif message.content == "$refresh_invites_message":
+        #     await hc.refresh_invites_message(message.guild, db)
 
-        elif message.content == "$test":
-            category = message.guild.get_channel(
-                db.get("team_text_channels_category_id")
-            )
-            print(category.position)
-            print(len(category.channels))
-            if len(category.channels) > 48:
-                count = sum(
-                    [
-                        1
-                        for c in category.guild.categories
-                        if c.name.lower().startswith("salons d'équipes")
-                    ]
-                )
-                newCategory = await message.guild.create_category_channel(
-                    f"Salons d'équipes {count + 1}"
-                )
-                db.modify("team_text_channels_category_id", newCategory.id)
-            else:
-                print(category.name)
+        # elif message.content == "$test":
+        #     category = message.guild.get_channel(
+        #         db.get("team_text_channels_category_id")
+        #     )
+        #     print(category.position)
+        #     print(len(category.channels))
+        #     if len(category.channels) > 48:
+        #         count = sum(
+        #             [
+        #                 1
+        #                 for c in category.guild.categories
+        #                 if c.name.lower().startswith("salons d'équipes")
+        #             ]
+        #         )
+        #         newCategory = await message.guild.create_category_channel(
+        #             f"Salons d'équipes {count + 1}"
+        #         )
+        #         db.modify("team_text_channels_category_id", newCategory.id)
+        #     else:
+        #         print(category.name)
 
         elif message.content.startswith("$initmessagebienvenue"):
             view = discord.ui.View(timeout=None)
@@ -595,11 +601,11 @@ async def on_message(message: discord.Message):
             view.add_item(player)
             view.add_item(spectator)
             e = discord.Embed(
-                title="Bienvenue sur le serveur ! :wave:", color=discord.Color.green()
+                title="Welcome on the server ! :wave:", color=discord.Color.green()
             )
             e.add_field(
                 name="What are you doing on the server ?",
-                value='If you are here to play, click on the "Player !" button, if you are here to spectate the tournament, click on the "Spectator !" button.',
+                value='If you are here to play, click on the "Player !" button, if you are here to spectate the tourney, click on the "Spectator !" button.',
                 inline=False,
             )
             e.set_footer(text=f"©HellBot")
