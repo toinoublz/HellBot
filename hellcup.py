@@ -224,7 +224,7 @@ async def inscription(member: dict):
     inscriptionData["players"][member["discordId"]] = member
     json.dump(inscriptionData, open("inscriptions.json", "w"))
     try:
-        gu.gspread_new_registration(member)
+        await gu.gspread_new_registration(member)
     except Exception as e:
         print(e)
 
