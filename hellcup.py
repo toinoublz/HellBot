@@ -223,6 +223,10 @@ async def inscription(member: dict):
     inscriptionData = json.load(open("inscriptions.json", "r"))
     inscriptionData["players"][member["discordId"]] = member
     json.dump(inscriptionData, open("inscriptions.json", "w"))
+    try:
+        gu.gspread_new_registration(member)
+    except Exception as e:
+        print(e)
 
 
 def team_already_exists(member1: discord.Member, member2: discord.Member):
