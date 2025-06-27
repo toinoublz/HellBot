@@ -44,18 +44,19 @@ class RegisterModal(ui.Modal):
                 else geoguessrLink.split("/")[-1]
             ),
         }
-        flag = await hc.is_geoguessr_id_correct(member["geoguessrId"])
-        if not flag:
+        infos = await hc.get_geoguessr_flag_and_pro(member["geoguessrId"])
+        if not infos:
             await interaction.followup.send(
                 f":warning: {interaction.user.mention} :warning:\n\nThe link to your Geoguessr profile seems to be incorrect. To find it, go to https://www.geoguessr.com/me/profile and at the very bottom you'll find the link in the form https://www.geoguessr.com/user/xxx.) If you think this is a mistake, please contact an admin!",
                 ephemeral=True,
             )
         else:
-            member["flag"] = flag
+            member["flag"] = infos[0]
+            member["isPro"] = infos[1]
             await hc.inscription(member)
             try:
                 await interaction.user.edit(
-                    nick=f"{hc.flag_to_emoji(flag)} {interaction.user.display_name}"
+                    nick=f"{hc.flag_to_emoji(infos[0])} {interaction.user.display_name}"
                 )
             except:
                 pass

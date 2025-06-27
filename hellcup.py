@@ -7,13 +7,14 @@ import gspread_utilities as gu
 from DB import DB
 
 
-async def is_geoguessr_id_correct(geoguessr_id: str):
+async def get_geoguessr_flag_and_pro(geoguessr_id: str):
     async with aiohttp.ClientSession() as session:
         async with session.get(
             f"https://www.geoguessr.com/api/v3/users/{geoguessr_id}"
         ) as response:
             if response.ok:
-                return f":flag_{(await response.json())['countryCode'].lower()}:"
+                data = await response.json()
+                return (f":flag_{data['countryCode'].lower()}:", data["isProUser"])
             else:
                 return False
 
@@ -246,6 +247,10 @@ async def create_team(member1: discord.Member, member2: discord.Member):
         member2,
     ]
     json.dump(inscriptionData, open("inscriptions.json", "w"))
+    try:
+        await gu.gspread_new_team([member1, member2])
+    except Exception as e:
+        print(e)
     return member1["surname"], member2["surname"]
 
 async def get_qualified_teams():

@@ -43,3 +43,14 @@ async def gspread_new_registration(member: dict):
         [member["discordId"], member["geoguessrId"], member["surname"], member["flag"]]
     )
     return
+
+async def gspread_new_team(team: list[dict]):
+    clientg = await connect_gsheet_api()
+    spreadsheet = await clientg.open("[ORGA] Guess and Give Inscriptions")
+    worksheet = await spreadsheet.worksheet("Teams")
+    await worksheet.append_row(
+        [team[0]["discordId"], team[0]["geoguessrId"], team[0]["surname"], team[0]["flag"],
+         team[1]["discordId"], team[1]["geoguessrId"], team[1]["surname"], team[1]["flag"]]
+    )
+    return
+
