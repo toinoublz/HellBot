@@ -55,9 +55,11 @@ class RegisterModal(ui.Modal):
             member["isPro"] = infos[1]
             await hc.inscription(member)
             try:
-                await interaction.user.edit(
-                    nick=f"{hc.flag_to_emoji(infos[0])} {interaction.user.display_name}"
-                )
+                flag = hc.flag_to_emoji(infos[0])
+                if not interaction.user.display_name.startswith(flag + " "):
+                    await interaction.user.edit(
+                        nick=f"{flag} {interaction.user.display_name}"
+                    )
             except:
                 pass
             await interaction.user.add_roles(
