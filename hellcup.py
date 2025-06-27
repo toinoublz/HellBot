@@ -242,10 +242,13 @@ async def create_team(member1: discord.Member, member2: discord.Member):
     inscriptionData = json.load(open("inscriptions.json", "r"))
     member1 = inscriptionData["players"][str(member1.id)]
     member2 = inscriptionData["players"][str(member2.id)]
-    inscriptionData["teams"][f"{member1['discordId']}_{member2['discordId']}"] = [
-        member1,
-        member2,
-    ]
+    inscriptionData["teams"][f"{member1['discordId']}_{member2['discordId']}"] = {
+        "teamName": f"{member1['discordId']}_{member2['discordId']}",
+        "member1": member1,
+        "member2": member2,
+        "score": 0.0,
+        "previousOpponents": [],
+    }
     json.dump(inscriptionData, open("inscriptions.json", "w"))
     try:
         await gu.gspread_new_team([member1, member2])
@@ -253,15 +256,29 @@ async def create_team(member1: discord.Member, member2: discord.Member):
         print(e)
     return member1["surname"], member2["surname"]
 
-async def get_qualified_teams():
-    return await gu.get_qualified_teams_names()
+def get_duel_score(team1: dict, team2: dict) -> float:
+    allPros = [team1["member1"]["isPro"], team1["member2"]["isPro"], team2["member1"]["isPro"], team2["member2"]["isPro"]]
+    allFlags = [team1["member1"]["flag"], team1["member2"]["flag"], team2["member1"]["flag"], team2["member2"]["flag"]]
+    allPlayers = [team1["member1"]["discordId"], team1["member2"]["discordId"], team2["member1"]["discordId"], team2["member2"]["discordId"]]
+    if not (any(allPros) and len(set(allFlags)) > 1 and len(set(allPlayers)) == 4):
+        return 0.0
+    previousOpponentsScore = (0.5 if team1["teamName"] not in team2["previousOpponents"] else min(0.1 * (team2["previousOpponents"][::-1].index(team1["teamName"]) + 1),0.5)) + \
+                             (0.5 if team2["teamName"] not in team1["previousOpponents"] else min(0.1 * (team1["previousOpponents"][::-1].index(team2["teamName"]) + 1),0.5))
+    return previousOpponentsScore
 
+def update_inscription():
+    inscriptionData = json.load(open("inscriptions.json", "r"))
+    for teamName, data in inscriptionData["teams"].items():
+        inscriptionData["teams"][teamName] = {
+        "teamName": teamName,
+        "member1": data[0],
+        "member2": data[1],
+        "score": 0.0,
+        "previousOpponents": [],
+    }
+    json.dump(inscriptionData, open("inscriptions.json", "w"), indent=4)
 
-async def get_bets_discordIds():
-    return await gu.get_bets_discordIds()
-
-
-async def place_bet(
-    discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str
-):
-    await gu.place_bet(discordId, bet1, bet2, bet3, isAnonymous, discordName)
+# if __name__ == "__main__":
+#     # teams = json.load(open("inscriptions.json", "r"))["teams"]
+#     # print(get_duel_score(teams["1"], teams["2"]))
+#     update_inscription()
