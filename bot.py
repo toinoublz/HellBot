@@ -1,11 +1,12 @@
-import asyncio
+import json
 import os
 import traceback
 from datetime import datetime
-from math import ceil, sqrt
+from zoneinfo import ZoneInfo
+from datetime import time as d_time
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 import DB
@@ -24,11 +25,28 @@ db = DB.DB("hellbot_gg")
 
 # Variable globale pour stocker les invitations
 invites_before = {}
+tzParis = ZoneInfo("Europe/Paris")
+
+@tasks.loop(time=d_time(19, 00, 00, tzinfo=tzParis))
+async def update_flags():
+    inscriptions = json.load(open("inscriptions.json", "r"))
+    for player in inscriptions["players"].values():
+        new_flag = await hc.get_geoguessr_flag_and_pro(player["geoguessrId"])[0]
+        if new_flag != player["flag"]:
+            await log_error(f"Flag mis à jour de {player['surname']} de {player['flag']} à {new_flag}")
+            player["flag"] = new_flag
+            for teams in inscriptions["teams"].values():
+                if teams["member1"]["discordId"] == player["discordId"]:
+                    teams["member1"]["flag"] = new_flag
+                elif teams["member2"]["discordId"] == player["discordId"]:
+                    teams["member2"]["flag"] = new_flag
+    json.dump(inscriptions, open("inscriptions.json", "w"))
 
 
 @bot.event
 async def on_ready():
     print(f"{bot.user} est connecté à Discord!")
+    update_flags.start()
     # Charger les invitations existantes pour chaque serveur
     for guild in bot.guilds:
         invites_before[guild.id] = await guild.invites()
