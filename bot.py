@@ -35,6 +35,11 @@ async def update_flags():
         if new_flag != player["flag"]:
             await log_error(f"Flag mis à jour de {player['surname']} de {player['flag']} à {new_flag}")
             player["flag"] = new_flag
+            flag = hc.flag_to_emoji(new_flag)
+            if not bot.get_user(player["discordId"]).display_name.startswith(flag + " "):
+                await bot.get_user(player["discordId"]).edit(
+                    nick=f"{flag} {bot.get_user(player["discordId"]).display_name}"
+                )
             for teams in inscriptions["teams"].values():
                 if teams["member1"]["discordId"] == player["discordId"]:
                     teams["member1"]["flag"] = new_flag
