@@ -27,25 +27,30 @@ db = DB.DB("hellbot_gg")
 invites_before = {}
 tzParis = ZoneInfo("Europe/Paris")
 
-@tasks.loop(time=d_time(20, 00, 00, tzinfo=tzParis))
+@tasks.loop(time=d_time(21, 00, 00, tzinfo=tzParis))
 async def update_flags():
-    inscriptions = json.load(open("inscriptions.json", "r"))
-    for player in inscriptions["players"].values():
-        new_flag = (await hc.get_geoguessr_flag_and_pro(player["geoguessrId"]))[0]
-        if new_flag != player["flag"]:
-            await log_error(f"Flag mis à jour de {player['surname']} de {player['flag']} à {new_flag}")
-            player["flag"] = new_flag
-            flag = hc.flag_to_emoji(new_flag)
-            if not bot.get_user(player["discordId"]).display_name.startswith(flag + " "):
-                await bot.get_user(player["discordId"]).edit(
-                    nick=f"{flag} {bot.get_user(player['discordId']).display_name}"
-                )
-            for teams in inscriptions["teams"].values():
-                if teams["member1"]["discordId"] == player["discordId"]:
-                    teams["member1"]["flag"] = new_flag
-                elif teams["member2"]["discordId"] == player["discordId"]:
-                    teams["member2"]["flag"] = new_flag
-    json.dump(inscriptions, open("inscriptions.json", "w"))
+    print(update_flags)
+    try:
+        inscriptions = json.load(open("inscriptions.json", "r"))
+        for player in inscriptions["players"].values():
+            new_flag = (await hc.get_geoguessr_flag_and_pro(player["geoguessrId"]))[0]
+            if new_flag != player["flag"]:
+                await log_message(f"Flag mis à jour de {player['surname']} de {player['flag']} à {new_flag}")
+                player["flag"] = new_flag
+                flag = hc.flag_to_emoji(new_flag)
+                if not bot.get_user(player["discordId"]).display_name.startswith(flag + " "):
+                    await bot.get_user(player["discordId"]).edit(
+                        nick=f"{flag} {bot.get_user(player['discordId']).display_name}"
+                    )
+                for teams in inscriptions["teams"].values():
+                    if teams["member1"]["discordId"] == player["discordId"]:
+                        teams["member1"]["flag"] = new_flag
+                    elif teams["member2"]["discordId"] == player["discordId"]:
+                        teams["member2"]["flag"] = new_flag
+        json.dump(inscriptions, open("inscriptions.json", "w"))
+    except Exception as e:
+        print(e)
+        await log_error(e)
 
 
 @bot.event
@@ -99,6 +104,30 @@ async def log_error(error: Exception, ctx=None):
             value=f"Commande: {ctx.command}\nAuteur: {ctx.author}\nCanal: {ctx.channel}\nMessage: {ctx.message.content}",
             inline=False,
         )
+
+    await channel.send(embed=embed)
+
+async def log_message(message: str):
+    """Envoie les erreurs dans le canal des super logs"""
+    logs_channel_id = db.get("logs_channel_id")
+    if not logs_channel_id:
+        return  # Si pas de canal configuré, on ne fait rien
+
+    channel = bot.get_channel(logs_channel_id)
+    if not channel:
+        return
+
+    # Créer un embed pour l'erreur
+    embed = discord.Embed(
+        title="⚠️ Log info",
+        description="Info de log",
+        color=discord.Color.yellow(),
+        timestamp=datetime.now(),
+    )
+
+    embed.add_field(
+        name="Message", value=message, inline=False
+    )
 
     await channel.send(embed=embed)
 
