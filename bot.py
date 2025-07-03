@@ -27,7 +27,7 @@ db = DB.DB("hellbot_gg")
 invites_before = {}
 tzParis = ZoneInfo("Europe/Paris")
 
-@tasks.loop(time=d_time(19, 00, 00, tzinfo=tzParis))
+@tasks.loop(time=d_time(20, 00, 00, tzinfo=tzParis))
 async def update_flags():
     inscriptions = json.load(open("inscriptions.json", "r"))
     for player in inscriptions["players"].values():
