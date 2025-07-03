@@ -38,7 +38,7 @@ async def update_flags():
             flag = hc.flag_to_emoji(new_flag)
             if not bot.get_user(player["discordId"]).display_name.startswith(flag + " "):
                 await bot.get_user(player["discordId"]).edit(
-                    nick=f"{flag} {bot.get_user(player["discordId"]).display_name}"
+                    nick=f"{flag} {bot.get_user(player['discordId']).display_name}"
                 )
             for teams in inscriptions["teams"].values():
                 if teams["member1"]["discordId"] == player["discordId"]:
