@@ -31,7 +31,7 @@ tzParis = ZoneInfo("Europe/Paris")
 async def update_flags():
     inscriptions = json.load(open("inscriptions.json", "r"))
     for player in inscriptions["players"].values():
-        new_flag = await hc.get_geoguessr_flag_and_pro(player["geoguessrId"])[0]
+        new_flag = (await hc.get_geoguessr_flag_and_pro(player["geoguessrId"]))[0]
         if new_flag != player["flag"]:
             await log_error(f"Flag mis à jour de {player['surname']} de {player['flag']} à {new_flag}")
             player["flag"] = new_flag
