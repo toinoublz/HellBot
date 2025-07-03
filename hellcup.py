@@ -151,6 +151,7 @@ def flag_to_emoji(flag: str):
         ":flag_pw:": "🇵🇼",  # Palaos
         ":flag_pa:": "🇵🇦",  # Panama
         ":flag_pg:": "🇵🇬",  # Papouasie-Nouvelle-Guinée
+        ":flag_ps:": "🇵🇸",  # Palestine
         ":flag_py:": "🇵🇾",  # Paraguay
         ":flag_pe:": "🇵🇪",  # Pérou
         ":flag_ph:": "🇵🇭",  # Philippines
