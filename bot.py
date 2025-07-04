@@ -27,29 +27,28 @@ db = DB.DB("hellbot_gg")
 invites_before = {}
 tzParis = ZoneInfo("Europe/Paris")
 
-@tasks.loop(time=d_time(21, 00, 00, tzinfo=tzParis))
+@tasks.loop(time=d_time(19, 00, 00, tzinfo=tzParis))
 async def update_flags():
-    print(update_flags)
     try:
         inscriptions = json.load(open("inscriptions.json", "r"))
         for player in inscriptions["players"].values():
-            new_flag = (await hc.get_geoguessr_flag_and_pro(player["geoguessrId"]))[0]
-            if new_flag != player["flag"]:
+            new_flag_str, _ = await hc.get_geoguessr_flag_and_pro(player["geoguessrId"])
+            if new_flag_str != player["flag"]:
                 await log_message(f"Flag mis à jour de {player['surname']} de {player['flag']} à {new_flag}")
-                player["flag"] = new_flag
-                flag = hc.flag_to_emoji(new_flag)
-                if not bot.get_user(player["discordId"]).display_name.startswith(flag + " "):
-                    await bot.get_user(player["discordId"]).edit(
-                        nick=f"{flag} {bot.get_user(player['discordId']).display_name}"
-                    )
+                old_flag = hc.flag_to_emoji(player["flag"])
+                new_flag = hc.flag_to_emoji(new_flag_str)
+                player["flag"] = new_flag_str
+                member = bot.get_guild(db.get("guess_and_give_server_id")).get_member(int(player["discordId"]))
+                await member.edit(
+                    nick=member.display_name.replace(old_flag, new_flag)
+                )
                 for teams in inscriptions["teams"].values():
                     if teams["member1"]["discordId"] == player["discordId"]:
-                        teams["member1"]["flag"] = new_flag
+                        teams["member1"]["flag"] = new_flag_str
                     elif teams["member2"]["discordId"] == player["discordId"]:
-                        teams["member2"]["flag"] = new_flag
+                        teams["member2"]["flag"] = new_flag_str
         json.dump(inscriptions, open("inscriptions.json", "w"))
     except Exception as e:
-        print(e)
         await log_error(e)
 
 
