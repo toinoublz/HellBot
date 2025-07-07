@@ -34,9 +34,9 @@ async def update_flags():
         for player in inscriptions["players"].values():
             new_flag_str, _ = await hc.get_geoguessr_flag_and_pro(player["geoguessrId"])
             if new_flag_str != player["flag"]:
-                await log_message(f"Flag mis à jour de {player['surname']} de {player['flag']} à {new_flag}")
                 old_flag = hc.flag_to_emoji(player["flag"])
                 new_flag = hc.flag_to_emoji(new_flag_str)
+                await log_message(f"Flag mis à jour de {player['surname']} de {player['flag']} à {new_flag}")
                 player["flag"] = new_flag_str
                 member = bot.get_guild(db.get("guess_and_give_server_id")).get_member(int(player["discordId"]))
                 await member.edit(
