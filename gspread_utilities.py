@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 import discord
 import gspread_asyncio
@@ -54,3 +55,26 @@ async def gspread_new_team(team: list[dict]):
     )
     return
 
+async def add_duels_infos(data: dict):
+    clientg = await connect_gsheet_api()
+    spreadsheet = await clientg.open("Guess & Give Summer 2025 - International Duels - Hellias Version")
+    worksheet = await spreadsheet.worksheet("raw_data")
+    await worksheet.append_row(
+        [
+            datetime.now().strftime("%d/%m/%Y %H:%M:%S"),'', '', '',
+            data["link"],
+            f"=HYPERLINK(\"{data['mapLink']}\", \"{data['mapName']}\")",
+            data["gamemode"],
+            data["initialHealth"],
+            data["numberOfRounds"],
+            data["numberOfPlayers"],
+            data["allCountries"],
+            data["WnumberOfPlayers"],
+            data["WuserNames"],
+            data["Wcountries"],
+            data["LnumberOfPlayers"],
+            data["LuserNames"],
+            data["Lcountries"]
+        ]
+    )
+    return

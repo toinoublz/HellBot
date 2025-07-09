@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 import traceback
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -743,6 +744,27 @@ async def on_message(message: discord.Message):
             )
             e.set_footer(text=f"©HellBot")
             signupMessage = await message.guild.get_channel(db.get("sign_up_channel_id")).send(embed=e, view=view)
+
+    if message.channel.id == db.get("summary_links_channel_id"):
+        duelId = re.search(r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", message.content)
+        if not duelId:
+            await message.delete()
+            return
+
+        match = hc.find_match_with_user_id(message.author.id)
+        if not match:
+            await message.delete()
+            return
+
+        duelId = duelId.group()
+
+        await hc.process_duel_link(duelId)
+        matchmakingData = await hc.close_match(match, json.load(open("matchmaking.json", "r")), message.channel)
+        json.dump(matchmakingData, open("matchmaking.json", "w"))
+
+        await message.add_reaction("✅")
+
+
 
 # @bot.command(name='hello')
 # async def hello(ctx):

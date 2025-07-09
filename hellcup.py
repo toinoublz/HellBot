@@ -1,11 +1,15 @@
+import asyncio
 import json
+import os
 
 import aiohttp
 import discord
+from dotenv import load_dotenv
 
 import gspread_utilities as gu
 from DB import DB
 
+load_dotenv()
 
 async def get_geoguessr_flag_and_pro(geoguessr_id: str):
     async with aiohttp.ClientSession() as session:
@@ -354,7 +358,7 @@ async def create_match(match: tuple[tuple[str, str], float, str], matchmakingDat
     return matchmakingData
 
 async def close_match(match: dict, matchmakingData: dict, channel: discord.VoiceChannel | discord.TextChannel) -> dict:
-    
+
     await channel.guild.get_channel(match["matchTextChannel"]).delete()
     matchmakingData["currentMatches"].remove(match)
 
@@ -377,9 +381,53 @@ def player_in_match(id: int) -> int:
             return match["matchTextChannelIs"]
     return None
 
-if __name__ == "__main__":
-    # teams = json.load(open("inscriptions.json", "r"))["teams"]
-    # print(get_duel_score(teams["1"], teams["2"]))
-    # update_inscription()
+def get_username_from_geoguessr_id(id: str) -> str:
+    inscriptionData = json.load(open("inscriptions.json", "r"))
+    inscriptionDataWithGeoguessrIdAsKey = {player["geoguessrId"]: player for player in inscriptionData["players"].values()}
+    return inscriptionDataWithGeoguessrIdAsKey[id]["surname"]
 
-    watch_for_matches(json.load(open("matchmaking.json", "r")))
+def get_country_code_from_geoguessr_id(id: str) -> str:
+    inscriptionData = json.load(open("inscriptions.json", "r"))
+    inscriptionDataWithGeoguessrIdAsKey = {player["geoguessrId"]: player for player in inscriptionData["players"].values()}
+    return inscriptionDataWithGeoguessrIdAsKey[id]["flag"].split("_")[1]
+
+async def process_duel_link(id: str):
+
+    headers = {
+        "Content-Type": "application/json",
+        "cookie": f"_ncfa={os.getenv('GG_NCFA')}"
+    }
+
+    async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"https://game-server.geoguessr.com/api/duels/{id}",
+                headers=headers
+            ) as r:
+                js = await r.json()
+
+    winningTeamId = js["result"]["winningTeamId"]
+
+    duelData = {
+        "link": f"https://www.geoguessr.com/duels/{id}/summary",
+        "mapName": js["options"]["map"]["name"],
+        "mapLink" : f"https://www.geoguessr.com/maps/{js['options']['map']['slug']}",
+        "gamemode" : "No Move" if js["options"]["movementOptions"]["forbidMoving"] and not js["options"]["movementOptions"]["forbidRotating"] and not js["options"]["movementOptions"]["forbidZooming"] else "NMPZ" if js["options"]["movementOptions"]["forbidMoving"] and js["options"]["movementOptions"]["forbidRotating"] and js["options"]["movementOptions"]["forbidZooming"] else "Unknown",
+        "initialHealth" : js["options"]["initialHealth"],
+        "numberOfRounds" : js["currentRoundNumber"],
+        "numberOfPlayers" : sum(len(team["players"]) for team in js["teams"]),
+        "allCountries" : ','.join([get_country_code_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"]]),
+        "WnumberOfPlayers" : sum(len(team["players"]) for team in js["teams"] if team["id"] == winningTeamId),
+        "WuserNames" : ','.join([get_username_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"]  if team["id"] == winningTeamId]),
+        "Wcountries" : ','.join([get_country_code_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"] if team["id"] == winningTeamId]),
+        "LnumberOfPlayers" : sum(len(team["players"]) for team in js["teams"] if team["id"] != winningTeamId),
+        "LuserNames" : ','.join([get_username_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"] if team["id"] != winningTeamId]),
+        "Lcountries" : ','.join([get_country_code_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"] if team["id"] != winningTeamId]),
+    }
+
+    await gu.add_duels_infos(duelData)
+
+    return
+
+if __name__ == "__main__":
+
+    asyncio.run(process_duel_link("4bdc9b41-eb36-4053-a6d1-829cd113bc16"))
