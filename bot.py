@@ -493,7 +493,7 @@ async def on_voice_state_update(
 
         availableTeamsPairsScores = hc.watch_for_matches(matchmakingData)
 
-        while len(availableTeamsPairsScores) > 0 and availableTeamsPairsScores[0][1] > 0.5:
+        while len(availableTeamsPairsScores) > 0 and availableTeamsPairsScores[0][1] >= 0.5:
             match = availableTeamsPairsScores[0]
 
             matchmakingData = await hc.create_match(match, matchmakingData, after.channel)

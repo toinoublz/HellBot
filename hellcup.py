@@ -278,18 +278,6 @@ def get_duel_score(team1: dict, team2: dict) -> float:
 
     return previousOpponentsScore
 
-def update_inscription():
-    inscriptionData = json.load(open("inscriptions.json", "r"))
-    for teamName, data in inscriptionData["teams"].items():
-        inscriptionData["teams"][teamName] = {
-        "teamName": teamName,
-        "member1": data[0],
-        "member2": data[1],
-        "score": [],
-        "previousOpponents": [],
-    }
-    json.dump(inscriptionData, open("inscriptions.json", "w"), indent=4)
-
 def watch_for_matches(matchmakingData: dict) -> list[tuple[tuple[str, str], float, str]]:
     inscriptionData = json.load(open("inscriptions.json", "r"))
     NMAvailableTeams = matchmakingData["pendingTeams"]["NM"]
