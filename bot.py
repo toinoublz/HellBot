@@ -603,13 +603,13 @@ async def on_interaction(interaction: discord.Interaction):
             role = interaction.guild.get_role(db.get("NM_role_id"))
             if role in interaction.user.roles:
                 await interaction.response.send_message(
-                    f":warning: {interaction.user.mention} :warning:\n\nYou are no longer in NM 30s duels !",
+                    f":warning: {interaction.user.mention} :warning:\n\nYou are no longer in NM 30s duels",
                     ephemeral=True,
                 )
                 await interaction.user.remove_roles(role)
             else:
                 await interaction.response.send_message(
-                    f":tada: {interaction.user.mention} :tada:\n\nYou can now play NM 30s duels !",
+                    f":tada: {interaction.user.mention} :tada:\n\nYou can now play NM 30s duels ! Don't forget to tell your mate to do so if not done yet !",
                     ephemeral=True,
                 )
                 await interaction.user.add_roles(role)
@@ -623,7 +623,7 @@ async def on_interaction(interaction: discord.Interaction):
                 await interaction.user.remove_roles(role)
             else:
                 await interaction.response.send_message(
-                    f":tada: {interaction.user.mention} :tada:\n\nYou can now play NMPZ 15s duels !",
+                    f":tada: {interaction.user.mention} :tada:\n\nYou can now play NMPZ 15s duels ! Don't forget to tell your mate to do so if not done yet !",
                     ephemeral=True,
                 )
                 await interaction.user.add_roles(role)
@@ -738,11 +738,11 @@ async def on_message(message: discord.Message):
             )
             e.add_field(
                 name="What do you want to play as Duels ?",
-                value='If you want to play only NM 30s, click on the "NM 30s" button, if you want to play only NMPZ 15s, click on the "NMPZ 15s" button. If you want to play both, click on both buttons.',
+                value='If you want to play only NM 30s, click on the "NM 30s" button, if you want to play only NMPZ 15s, click on the "NMPZ 15s" button. If you want to play both, click on both buttons. If you change your mind, click again on buttons',
                 inline=False,
             )
             e.set_footer(text=f"©HellBot")
-            signupMessage = await message.guild.get_channel(1387403645842227301).send(embed=e, view=view)
+            signupMessage = await message.guild.get_channel(db.get("sign_up_channel_id")).send(embed=e, view=view)
 
 # @bot.command(name='hello')
 # async def hello(ctx):

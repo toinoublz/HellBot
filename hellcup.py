@@ -299,7 +299,7 @@ def watch_for_matches(matchmakingData: dict) -> list[tuple[tuple[str, str], floa
     NMAvailableTeamsPairsScores = sorted(zip(NMAvailableTeamsPairs, NMAvailableTeamsPairsScores), key=lambda x: x[1], reverse=True)
     NMPZAvailableTeamsPairsScores = sorted(zip(NMPZAvailableTeamsPairs, NMPZAvailableTeamsPairsScores), key=lambda x: x[1], reverse=True)
 
-    availableTeamsPairsScores = [(team[0], team[1], "NM") for team in NMAvailableTeamsPairsScores] + [(team[0], team[1], "NMPZ") for team in NMPZAvailableTeamsPairsScores]
+    availableTeamsPairsScores = [(team[0], team[1], "NM 30s") for team in NMAvailableTeamsPairsScores] + [(team[0], team[1], "NMPZ 15s") for team in NMPZAvailableTeamsPairsScores]
 
     availableTeamsPairsScores = sorted(availableTeamsPairsScores, key=lambda x: x[1], reverse=True)
 
@@ -329,7 +329,7 @@ async def create_match(match: tuple[tuple[str, str], float, str], matchmakingDat
         overwrites[user] = discord.PermissionOverwrite(view_channel=True)
 
     matchTextChannel = await channel.category.create_text_channel(f"Match | {flags[0]}&{flags[1]} vs {flags[2]}&{flags[3]}", overwrites=overwrites)
-    await matchTextChannel.send(f"{users[0].mention} & {users[1].mention} vs {users[2].mention} & {users[3].mention}\n\nYou can chat here. Here are the rules for your duel :\n- Every player should guess at least once during the duel.\n- At least 4000hp at start.\n- Don't forget to send the summary link in <#1384834903245590588>.\n\nGL&HF !")
+    await matchTextChannel.send(f"{users[0].mention} & {users[1].mention} vs {users[2].mention} & {users[3].mention}\n\nYou can chat here. Here are the rules for your duel :\n- Gamemode : {matchType}\n- Every player should guess at least once during the duel.\n- At least 4000hp at start.\n- Don't forget to send the summary link in <#1384834903245590588>.\n\nGL&HF !")
 
     teamsVocsIds = []
 
