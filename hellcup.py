@@ -216,7 +216,7 @@ def flag_to_emoji(flag: str):
     return flag_shortcodes_to_emojis[flag]
 
 
-def get_flag(discordId: int):
+def get_flag(discordId: int) -> str:
     inscriptionData = json.load(open("inscriptions.json", "r"))
     return flag_to_emoji(inscriptionData["players"][str(discordId)]["flag"])
 
@@ -265,6 +265,13 @@ def get_duel_score(team1: dict, team2: dict) -> float:
         return 0.0
     previousOpponentsScore = (0.5 if team1["teamName"] not in team2["previousOpponents"] else min(0.1 * (team2["previousOpponents"][::-1].index(team1["teamName"]) + 1),0.5)) + \
                              (0.5 if team2["teamName"] not in team1["previousOpponents"] else min(0.1 * (team1["previousOpponents"][::-1].index(team2["teamName"]) + 1),0.5))
+
+    if len(team1["score"]) >= 5 and len(team2["score"]) >= 5:
+        team1ScoreRatio = sum(team1["score"]) / len(team1["score"])
+        team2ScoreRatio = sum(team2["score"]) / len(team2["score"])
+        diff = abs(team1ScoreRatio - team2ScoreRatio)
+        previousOpponentsScore -= (diff*0.2)
+
     return previousOpponentsScore
 
 def update_inscription():
@@ -274,12 +281,105 @@ def update_inscription():
         "teamName": teamName,
         "member1": data[0],
         "member2": data[1],
-        "score": 0.0,
+        "score": [],
         "previousOpponents": [],
     }
     json.dump(inscriptionData, open("inscriptions.json", "w"), indent=4)
 
-# if __name__ == "__main__":
-#     # teams = json.load(open("inscriptions.json", "r"))["teams"]
-#     # print(get_duel_score(teams["1"], teams["2"]))
-#     update_inscription()
+def watch_for_matches(matchmakingData: dict) -> list[tuple[tuple[str, str], float, str]]:
+    inscriptionData = json.load(open("inscriptions.json", "r"))
+    NMAvailableTeams = matchmakingData["pendingTeams"]["NM"]
+    NMPZAvailableTeams = matchmakingData["pendingTeams"]["NMPZ"]
+
+    NMAvailableTeamsPairs = [(NMAvailableTeams[i], NMAvailableTeams[j]) for i in range(len(NMAvailableTeams)) for j in range(i+1, len(NMAvailableTeams)) if i != j]
+    NMAvailableTeamsPairsScores = [get_duel_score(inscriptionData["teams"][team1], inscriptionData["teams"][team2]) for team1, team2 in NMAvailableTeamsPairs]
+    NMPZAvailableTeamsPairs = [(NMPZAvailableTeams[i], NMPZAvailableTeams[j]) for i in range(len(NMPZAvailableTeams)) for j in range(i+1, len(NMPZAvailableTeams)) if i != j]
+    NMPZAvailableTeamsPairsScores = [get_duel_score(inscriptionData["teams"][team1], inscriptionData["teams"][team2]) for team1, team2 in NMPZAvailableTeamsPairs]
+
+    NMAvailableTeamsPairsScores = sorted(zip(NMAvailableTeamsPairs, NMAvailableTeamsPairsScores), key=lambda x: x[1], reverse=True)
+    NMPZAvailableTeamsPairsScores = sorted(zip(NMPZAvailableTeamsPairs, NMPZAvailableTeamsPairsScores), key=lambda x: x[1], reverse=True)
+
+    availableTeamsPairsScores = [(team[0], team[1], "NM") for team in NMAvailableTeamsPairsScores] + [(team[0], team[1], "NMPZ") for team in NMPZAvailableTeamsPairsScores]
+
+    availableTeamsPairsScores = sorted(availableTeamsPairsScores, key=lambda x: x[1], reverse=True)
+
+    availableTeamsPairsScores = [match for match in availableTeamsPairsScores if match[1] > 0]
+
+    return availableTeamsPairsScores
+
+def isTeamConnected(members: list[discord.Member]) -> str:
+    inscriptionData = json.load(open("inscriptions.json", "r"))
+    membersIds = [member.id for member in members]
+    for team in inscriptionData["teams"].values():
+        if int(team["member1"]["discordId"]) in membersIds and int(team["member2"]["discordId"]) in membersIds:
+            return team["teamName"]
+    return None
+
+async def create_match(match: tuple[tuple[str, str], float, str], matchmakingData: dict, channel: discord.VoiceChannel) -> dict:
+    teams = match[0]
+    matchType = match[2]
+    allIds = [int(teams[0].split("_")[0]), int(teams[0].split("_")[1]), int(teams[1].split("_")[0]), int(teams[1].split("_")[1])]
+    users = [channel.guild.get_member(id) for id in allIds]
+    flags = [get_flag(id) for id in allIds]
+
+    overwrites = {
+        channel.guild.default_role: discord.PermissionOverwrite(view_channel=False)
+    }
+    for user in users:
+        overwrites[user] = discord.PermissionOverwrite(view_channel=True)
+
+    matchTextChannel = await channel.category.create_text_channel(f"Match | {flags[0]}&{flags[1]} vs {flags[2]}&{flags[3]}", overwrites=overwrites)
+    await matchTextChannel.send(f"{users[0].mention} & {users[1].mention} vs {users[2].mention} & {users[3].mention}\n\nYou can chat here. Here are the rules for your duel :\n- Every player should guess at least once during the duel.\n- At least 4000hp at start.\n- Don't forget to send the summary link in <#1384834903245590588>.\n\nGL&HF !")
+
+    teamsVocsIds = []
+
+    for voc in channel.category.voice_channels:
+        if teams[0] in voc.name and "Team Ready - " in voc.name:
+            await voc.edit(name=f"Pending Match - {teams[0]}")
+            teamsVocsIds.append(voc.id)
+        elif teams[1] in voc.name and "Team Ready - " in voc.name:
+            await voc.edit(name=f"Pending Match - {teams[1]}")
+            teamsVocsIds.append(voc.id)
+
+    matchData = {
+        "teams": teams,
+        "usersIds" : allIds,
+        "matchType": matchType,
+        "matchTextChannelIs": matchTextChannel.id,
+        "teamsVocsIds": teamsVocsIds
+    }
+
+    matchmakingData["currentMatches"].append(matchData)
+
+    return matchmakingData
+
+async def close_match(match: dict, matchmakingData: dict, channel: discord.VoiceChannel | discord.TextChannel) -> dict:
+    
+    await channel.guild.get_channel(match["matchTextChannel"]).delete()
+    matchmakingData["currentMatches"].remove(match)
+
+    for vocId in match["teamsVocsIds"]:
+        await channel.guild.get_channel(vocId).edit(name=f"Match Ending - {match['teams'][0]}")
+
+    return matchmakingData
+
+def find_match_with_user_id(id: int) -> dict:
+    matchmakingData = json.load(open("matchmaking.json", "r"))
+    for match in matchmakingData["currentMatches"]:
+        if id in match["usersIds"]:
+            return match
+    return None
+
+def player_in_match(id: int) -> int:
+    matchmakingData = json.load(open("matchmaking.json", "r"))
+    for match in matchmakingData["currentMatches"]:
+        if id in match["usersIds"]:
+            return match["matchTextChannelIs"]
+    return None
+
+if __name__ == "__main__":
+    # teams = json.load(open("inscriptions.json", "r"))["teams"]
+    # print(get_duel_score(teams["1"], teams["2"]))
+    # update_inscription()
+
+    watch_for_matches(json.load(open("matchmaking.json", "r")))

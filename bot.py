@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import traceback
@@ -400,6 +401,9 @@ async def on_voice_state_update(
         tempVocalsChannelsId.append(createdVocal.id)
         db.modify("temp_vocals_channel_id", tempVocalsChannelsId)
         await member.move_to(createdVocal)
+        return
+
+
     if (
         before.channel
         and before.channel.id in db.get("temp_vocals_channel_id")
@@ -409,6 +413,105 @@ async def on_voice_state_update(
         tempVocalsChannelsId.remove(before.channel.id)
         db.modify("temp_vocals_channel_id", tempVocalsChannelsId)
         await before.channel.delete()
+
+
+
+    if before.channel and before.channel.id in db.get("temp_matchmaking_vocals_channel_id"):
+        matchmakingData = json.load(open("matchmaking.json", "r"))
+        if str(member.id) in matchmakingData["NM"]:
+            matchmakingData["NM"].remove(str(member.id))
+        elif str(member.id) in matchmakingData["NMPZ"]:
+            matchmakingData["NMPZ"].remove(str(member.id))
+        json.dump(matchmakingData, open("matchmaking.json", "w"))
+
+
+    if after.channel and after.channel.id == db.get("matchmaking_voc_create_channel_id"):
+        createdVocal = await after.channel.category.create_voice_channel(
+            f"Waiting for mate - {member.name}"
+        )
+        tempVocalsChannelsId = db.get("temp_matchmaking_vocals_channel_id")
+        tempVocalsChannelsId.append(createdVocal.id)
+        db.modify("temp_matchmaking_vocals_channel_id", tempVocalsChannelsId)
+        await member.move_to(createdVocal)
+        return
+
+    if (
+        before.channel
+        and before.channel.id in db.get("matchmaking_voc_create_channel_id")
+        and len(before.channel.members) == 0
+    ):
+        if before.channel.name.startswith("Pending Match") and before.channel.id == hc.player_in_match(member.id):
+            try:
+                try:
+                    await member.send("Your team vocal is empty, you have 5 minutes to rejoin otherwise your match will be canceled.")
+                except:
+                    pass
+                await bot.wait_for("on_voice_state_update",check=lambda m,b,a: a.channel and a.channel.id == before.channel.id and m == member, timeout=300)
+                return
+
+            except asyncio.TimeoutError:
+                match = hc.find_match_with_user_id(member.id)
+                matchmakingData = await hc.close_match(match, json.load(open("matchmaking.json", "r")), before.channel)
+                json.dump(matchmakingData, open("matchmaking.json", "w"))
+
+        tempVocalsChannelsId = db.get("matchmaking_voc_create_channel_id")
+        tempVocalsChannelsId.remove(before.channel.id)
+        db.modify("matchmaking_voc_create_channel_id", tempVocalsChannelsId)
+        await before.channel.delete()
+
+
+    if after.channel and after.channel.name.startswith("Waiting for mate") and (teamName:=hc.isTeamConnected(after.channel.members)) is not None:
+        await after.channel.edit(name=f"Team Ready - {teamName}")
+
+        matchmakingData = json.load(open("matchmaking.json", "r"))
+        member1 = member.guild.get_member(int(teamName.split("_")[0]))
+        member2 = member.guild.get_member(int(teamName.split("_")[1]))
+        NMRole = member.guild.get_role(db.get("NM_role_id"))
+        NMPZRole = member.guild.get_role(db.get("NMPZ_role_id"))
+        check = False
+
+        if NMRole in member1.roles and NMRole in member2.roles:
+            matchmakingData["pendingTeams"]["NM"].append(teamName)
+            check = True
+        if NMPZRole in member1.roles and NMPZRole in member2.roles:
+            matchmakingData["pendingTeams"]["NMPZ"].append(teamName)
+            check = True
+
+        if not check:
+            try:
+                await member1.send("Hello, you and your mate need to be both registered as NM or NMPZ players to join the queue.")
+            except:
+                pass
+
+            try:
+                await member2.send("Hello, you and your mate need to be both registered as NM or NMPZ players to join the queue.")
+            except:
+                pass
+            return
+
+
+        availableTeamsPairsScores = hc.watch_for_matches(matchmakingData)
+
+        while len(availableTeamsPairsScores) > 0 and availableTeamsPairsScores[0][1] > 0.5:
+            match = availableTeamsPairsScores[0]
+
+            matchmakingData = await hc.create_match(match, matchmakingData, after.channel)
+
+            availableTeamsPairsScores = hc.watch_for_matches(matchmakingData)
+
+
+        while len(availableTeamsPairsScores) > 0:
+            ### Matches availables but score not good enough
+            try:
+                await bot.wait_for("on_voice_state_update", check=lambda _, __, after: after.channel and after.channel.name.startswith("Waiting for mate") and (hc.isTeamConnected(after.channel.members)) is not None, timeout=60)
+            except asyncio.TimeoutError:
+                match = availableTeamsPairsScores[0]
+
+                matchmakingData = await hc.create_match(match, matchmakingData, after.channel)
+
+                availableTeamsPairsScores = hc.watch_for_matches(matchmakingData)
+
+        json.dump(matchmakingData, open("matchmaking.json", "w"))
 
 
 @bot.event
@@ -496,6 +599,34 @@ async def on_interaction(interaction: discord.Interaction):
                 await interaction.guild.get_channel(
                     db.get("new_teams_channel_id")
                 ).send(embed=embed)
+        elif interaction.data["custom_id"] == "NM_button":
+            role = interaction.guild.get_role(db.get("NM_role_id"))
+            if role in interaction.user.roles:
+                await interaction.response.send_message(
+                    f":warning: {interaction.user.mention} :warning:\n\nYou are no longer in NM 30s duels !",
+                    ephemeral=True,
+                )
+                await interaction.user.remove_roles(role)
+            else:
+                await interaction.response.send_message(
+                    f":tada: {interaction.user.mention} :tada:\n\nYou can now play NM 30s duels !",
+                    ephemeral=True,
+                )
+                await interaction.user.add_roles(role)
+        elif interaction.data["custom_id"] == "NMPZ_button":
+            role = interaction.guild.get_role(db.get("NMPZ_role_id"))
+            if role in interaction.user.roles:
+                await interaction.response.send_message(
+                    f":warning: {interaction.user.mention} :warning:\n\nYou are no longer in NMPZ 15s duels !",
+                    ephemeral=True,
+                )
+                await interaction.user.remove_roles(role)
+            else:
+                await interaction.response.send_message(
+                    f":tada: {interaction.user.mention} :tada:\n\nYou can now play NMPZ 15s duels !",
+                    ephemeral=True,
+                )
+                await interaction.user.add_roles(role)
 
 
 @bot.tree.command(name="team", description="Créer votre équipe !/Create your team !")
@@ -535,11 +666,8 @@ async def on_message(message: discord.Message):
 
     if message.author.guild_permissions.administrator:
 
-        # Vérifier si c'est la commande $sync
         if message.content == "$sync":
-            # Vérifier si l'auteur est un administrateur
             try:
-                await message.delete()  # Supprimer la commande $sync
                 sync_message = await message.channel.send(
                     "🔄 Synchronisation des commandes en cours..."
                 )
@@ -552,6 +680,7 @@ async def on_message(message: discord.Message):
                 await sync_message.edit(
                     f"❌ Erreur lors de la synchronisation: {str(e)}"
                 )
+            await message.delete()
 
         elif message.content.startswith("$send"):
             try:
@@ -560,82 +689,6 @@ async def on_message(message: discord.Message):
             except Exception as e:
                 pass
             await message.delete()
-
-        elif message.content == "$stop_inscription":
-            messageToModify = await message.guild.get_channel(
-                db.get("sign_up_channel_id")
-            ).fetch_message(db.get("signup_message_id"))
-            view = discord.ui.View(timeout=None)
-            view.add_item(
-                discord.ui.Button(
-                    label=messageToModify.components[0].children[0].label,
-                    custom_id=messageToModify.components[0].children[0].custom_id,
-                    style=discord.ButtonStyle.secondary,
-                    disabled=True,
-                )
-            )
-            view.add_item(
-                discord.ui.Button(
-                    label=messageToModify.components[0].children[1].label,
-                    custom_id=messageToModify.components[0].children[1].custom_id,
-                    style=messageToModify.components[0].children[1].style,
-                )
-            )
-            await messageToModify.edit(
-                content=messageToModify.content,
-                embed=messageToModify.embeds[0],
-                view=view,
-            )
-
-        elif message.content == "$start_inscription":
-            messageToModify = await message.guild.get_channel(
-                db.get("sign_up_channel_id")
-            ).fetch_message(db.get("signup_message_id"))
-            view = discord.ui.View(timeout=None)
-            view.add_item(
-                discord.ui.Button(
-                    label=messageToModify.components[0].children[0].label,
-                    custom_id=messageToModify.components[0].children[0].custom_id,
-                    style=discord.ButtonStyle.primary,
-                    disabled=False,
-                )
-            )
-            view.add_item(
-                discord.ui.Button(
-                    label=messageToModify.components[0].children[1].label,
-                    custom_id=messageToModify.components[0].children[1].custom_id,
-                    style=messageToModify.components[0].children[1].style,
-                )
-            )
-            await messageToModify.edit(
-                content=messageToModify.content,
-                embed=messageToModify.embeds[0],
-                view=view,
-            )
-
-        # elif message.content == "$refresh_invites_message":
-        #     await hc.refresh_invites_message(message.guild, db)
-
-        # elif message.content == "$test":
-        #     category = message.guild.get_channel(
-        #         db.get("team_text_channels_category_id")
-        #     )
-        #     print(category.position)
-        #     print(len(category.channels))
-        #     if len(category.channels) > 48:
-        #         count = sum(
-        #             [
-        #                 1
-        #                 for c in category.guild.categories
-        #                 if c.name.lower().startswith("salons d'équipes")
-        #             ]
-        #         )
-        #         newCategory = await message.guild.create_category_channel(
-        #             f"Salons d'équipes {count + 1}"
-        #         )
-        #         db.modify("team_text_channels_category_id", newCategory.id)
-        #     else:
-        #         print(category.name)
 
         elif message.content.startswith("$initmessagebienvenue"):
             view = discord.ui.View(timeout=None)
@@ -665,6 +718,31 @@ async def on_message(message: discord.Message):
             ).send(embed=e, view=view)
             db.modify("signup_message_id", signupMessage.id)
 
+
+        elif message.content.startswith("$nmornmpz"):
+            view = discord.ui.View(timeout=None)
+            nm = discord.ui.Button(
+                style=discord.ButtonStyle.primary,
+                label="NM 30s",
+                custom_id="NM_button",
+            )
+            nmpz = discord.ui.Button(
+                style=discord.ButtonStyle.primary,
+                label="NMPZ 15s",
+                custom_id="NMPZ_button",
+            )
+            view.add_item(nm)
+            view.add_item(nmpz)
+            e = discord.Embed(
+                title="Configure your duels :right_fist::zap::left_fist:", color=discord.Color.green()
+            )
+            e.add_field(
+                name="What do you want to play as Duels ?",
+                value='If you want to play only NM 30s, click on the "NM 30s" button, if you want to play only NMPZ 15s, click on the "NMPZ 15s" button. If you want to play both, click on both buttons.',
+                inline=False,
+            )
+            e.set_footer(text=f"©HellBot")
+            signupMessage = await message.guild.get_channel(1387403645842227301).send(embed=e, view=view)
 
 # @bot.command(name='hello')
 # async def hello(ctx):
