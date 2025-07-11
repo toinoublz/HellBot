@@ -575,25 +575,28 @@ async def process_duel_link(
     }
 
     await gu.add_duels_infos(duelData)
-    matchmakingData["currentMatches"].remove(match)
-    winningPlayerId = [
-        player["playerId"]
-        for team in js["teams"]
-        for player in team["players"]
-        if team["id"] == winningTeamId
-    ][0]
+    if match is not None:
+        matchmakingData["currentMatches"].remove(match)
+        winningPlayerId = [
+            player["playerId"]
+            for team in js["teams"]
+            for player in team["players"]
+            if team["id"] == winningTeamId
+        ][0]
 
-    ggIds = [
-        inscriptionData["players"][str(discordId)]["geoguessrId"]
-        for discordId in match["usersIds"]
-    ]
+        ggIds = [
+            inscriptionData["players"][str(discordId)]["geoguessrId"]
+            for discordId in match["usersIds"]
+        ]
 
-    winningTeam = (
-        match["teams"][0] if ggIds.index(winningPlayerId) > 2 else match["teams"][1]
-    )
-    otherTeam = (
-        match["teams"][0] if ggIds.index(winningPlayerId) <= 2 else match["teams"][1]
-    )
+        winningTeam = (
+            match["teams"][0] if ggIds.index(winningPlayerId) > 2 else match["teams"][1]
+        )
+        otherTeam = (
+            match["teams"][0] if ggIds.index(winningPlayerId) <= 2 else match["teams"][1]
+        )
+    else:
+        return (None, None)
 
     return (winningTeam, otherTeam)
 

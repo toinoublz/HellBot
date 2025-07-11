@@ -836,49 +836,50 @@ async def on_message(message: discord.Message):
 
         match = hc.find_match_with_user_id(message.author.id)
         if not match:
-            await message.delete()
             await matchmaking_logs(
                 f"Can't find a match with the user id: `{message.author.id}`"
             )
-            return
 
         duelId = duelId.group()
 
-        matchmakingData = await hc.close_match(
-            match, json.load(open("matchmaking.json", "r")), message.channel
-        )
+        matchmakingData = json.load(open("matchmaking.json", "r"))
+
+        if match:
+            matchmakingData = await hc.close_match(
+                match, matchmakingData, message.channel
+            )
 
         winningTeam, loosingTeam = await hc.process_duel_link(
             duelId, match, matchmakingData
         )
+        if match:
+            inscriptionData = json.load(open("inscriptions.json", "r"))
+            if duelId not in inscriptionData["teams"][winningTeam]["previousDuelIds"]:
+                inscriptionData["teams"][winningTeam]["score"].append("1")
+                inscriptionData["teams"][winningTeam]["previousOpponents"].append(
+                    loosingTeam
+                )
+                inscriptionData["teams"][winningTeam]["previousDuelIds"].append(duelId)
+                inscriptionData["teams"][winningTeam]["lastGamemode"] = match["matchType"]
 
-        inscriptionData = json.load(open("inscriptions.json", "r"))
-        if duelId not in inscriptionData["teams"][winningTeam]["previousDuelIds"]:
-            inscriptionData["teams"][winningTeam]["score"].append("1")
-            inscriptionData["teams"][winningTeam]["previousOpponents"].append(
-                loosingTeam
-            )
-            inscriptionData["teams"][winningTeam]["previousDuelIds"].append(duelId)
-            inscriptionData["teams"][winningTeam]["lastGamemode"] = match["matchType"]
+                inscriptionData["teams"][loosingTeam]["score"].append("0")
+                inscriptionData["teams"][loosingTeam]["previousOpponents"].append(
+                    winningTeam
+                )
+                inscriptionData["teams"][loosingTeam]["previousDuelIds"].append(duelId)
+                inscriptionData["teams"][loosingTeam]["lastGamemode"] = match["matchType"]
 
-            inscriptionData["teams"][loosingTeam]["score"].append("0")
-            inscriptionData["teams"][loosingTeam]["previousOpponents"].append(
-                winningTeam
-            )
-            inscriptionData["teams"][loosingTeam]["previousDuelIds"].append(duelId)
-            inscriptionData["teams"][loosingTeam]["lastGamemode"] = match["matchType"]
+                for playersId in match["usersIds"]:
+                    try:
+                        member = message.guild.get_member(playersId)
+                        await member.send(
+                            f"Thanks for your participation ! To play again, just recreate a new vocal by clicking on <#1392420336506503248> and tell your mate to rejoin !"
+                        )
+                    except:
+                        pass
 
-            for playersId in match["usersIds"]:
-                try:
-                    member = message.guild.get_member(playersId)
-                    await member.send(
-                        f"Thanks for your participation ! To play again, just recreate a new vocal by clicking on <#1392420336506503248> and tell your mate to rejoin !"
-                    )
-                except:
-                    pass
-
-        json.dump(inscriptionData, open("inscriptions.json", "w"))
-        json.dump(matchmakingData, open("matchmaking.json", "w"))
+            json.dump(inscriptionData, open("inscriptions.json", "w"))
+            json.dump(matchmakingData, open("matchmaking.json", "w"))
 
         await message.add_reaction("✅")
 
