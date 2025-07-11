@@ -419,7 +419,7 @@ async def create_match(
     for user in users:
         overwrites[user] = discord.PermissionOverwrite(view_channel=True)
 
-    short_id = generate_short_id(users)
+    short_id = generate_short_id(allIds)
 
     if any([short_id in voc.name for voc in channel.category.voice_channels]):
         matchTextChannel = await channel.category.create_text_channel(
