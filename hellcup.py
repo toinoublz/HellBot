@@ -7,7 +7,21 @@ import discord
 from dotenv import load_dotenv
 
 import gspread_utilities as gu
-from DB import DB
+import hashlib
+
+def base62(num):
+    chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    res = ''
+    while num > 0:
+        num, i = divmod(num, 62)
+        res = chars[i] + res
+    return res.zfill(6)  # on force la longueur à 6
+
+def generate_short_id(id_list):
+    concat = ''.join(str(id) for id in id_list)
+    hash_hex = hashlib.sha1(concat.encode()).hexdigest()
+    hash_int = int(hash_hex[:10], 16)  # on prend les 10 premiers hex chars → assez d'entropie
+    return base62(hash_int)[:6]
 
 load_dotenv()
 
@@ -405,41 +419,44 @@ async def create_match(
     for user in users:
         overwrites[user] = discord.PermissionOverwrite(view_channel=True)
 
-    matchTextChannel = await channel.category.create_text_channel(
-        f"Match-{flags[0]}&{flags[1]}-vs-{flags[2]}&{flags[3]}", overwrites=overwrites
-    )
-    await matchTextChannel.send(
-        f"{users[0].mention} & {users[1].mention} vs {users[2].mention} & {users[3].mention}\n\nYou can chat here. Here are the rules for your duel :\n- Gamemode : {matchType}\n- Map : {'An Arbitrary World' if matchType == 'NM 30s' else 'An Arbitrary Rural World'}\n- Every player should guess at least once during the duel.\n- 6000hp at start\n- Multiplier 0.5\n- Round without multiplier : 0\n\n**At the end of your duel**\n- Don't forget to send the summary link in <#1384834903245590588>\n- Return to <#1392420336506503248> if you want to play again\n\nGL&HF !"
-    )
+    short_id = generate_short_id(users)
 
-    teamsVocsIds = []
+    if any([short_id in voc.name for voc in channel.category.voice_channels]):
+        matchTextChannel = await channel.category.create_text_channel(
+            f"Match-{flags[0]}&{flags[1]}-vs-{flags[2]}&{flags[3]} ({short_id})", overwrites=overwrites
+        )
+        await matchTextChannel.send(
+            f"{users[0].mention} & {users[1].mention} vs {users[2].mention} & {users[3].mention}\n\nYou can chat here. Here are the rules for your duel :\n- Gamemode : {matchType}\n- Map : {'An Arbitrary World' if matchType == 'NM 30s' else 'An Arbitrary Rural World'}\n- Every player should guess at least once during the duel.\n- 6000hp at start\n- Multiplier 0.5\n- Round without multiplier : 0\n\n**At the end of your duel**\n- Don't forget to send the summary link in <#1384834903245590588>\n- Return to <#1392420336506503248> if you want to play again\n\nGL&HF !"
+        )
 
-    for voc in channel.category.voice_channels:
-        if teams[0] in voc.name and "Team Ready - " in voc.name:
-            await voc.edit(name=f"Pending Match - {teams[0]}")
-            teamsVocsIds.append(voc.id)
-        elif teams[1] in voc.name and "Team Ready - " in voc.name:
-            await voc.edit(name=f"Pending Match - {teams[1]}")
-            teamsVocsIds.append(voc.id)
+        teamsVocsIds = []
 
-    matchData = {
-        "teams": teams,
-        "usersIds": allIds,
-        "matchType": matchType,
-        "matchTextChannelId": matchTextChannel.id,
-        "teamsVocsIds": teamsVocsIds,
-    }
+        for voc in channel.category.voice_channels:
+            if teams[0] in voc.name and "Team Ready - " in voc.name:
+                await voc.edit(name=f"Pending Match - {teams[0]}")
+                teamsVocsIds.append(voc.id)
+            elif teams[1] in voc.name and "Team Ready - " in voc.name:
+                await voc.edit(name=f"Pending Match - {teams[1]}")
+                teamsVocsIds.append(voc.id)
 
-    if teams[0] in matchmakingData["pendingTeams"]["NM"]:
-        matchmakingData["pendingTeams"]["NM"].remove(teams[0])
-    if teams[0] in matchmakingData["pendingTeams"]["NMPZ"]:
-        matchmakingData["pendingTeams"]["NMPZ"].remove(teams[0])
-    if teams[1] in matchmakingData["pendingTeams"]["NM"]:
-        matchmakingData["pendingTeams"]["NM"].remove(teams[1])
-    if teams[1] in matchmakingData["pendingTeams"]["NMPZ"]:
-        matchmakingData["pendingTeams"]["NMPZ"].remove(teams[1])
+        matchData = {
+            "teams": teams,
+            "usersIds": allIds,
+            "matchType": matchType,
+            "matchTextChannelId": matchTextChannel.id,
+            "teamsVocsIds": teamsVocsIds,
+        }
 
-    matchmakingData["currentMatches"].append(matchData)
+        if teams[0] in matchmakingData["pendingTeams"]["NM"]:
+            matchmakingData["pendingTeams"]["NM"].remove(teams[0])
+        if teams[0] in matchmakingData["pendingTeams"]["NMPZ"]:
+            matchmakingData["pendingTeams"]["NMPZ"].remove(teams[0])
+        if teams[1] in matchmakingData["pendingTeams"]["NM"]:
+            matchmakingData["pendingTeams"]["NM"].remove(teams[1])
+        if teams[1] in matchmakingData["pendingTeams"]["NMPZ"]:
+            matchmakingData["pendingTeams"]["NMPZ"].remove(teams[1])
+
+        matchmakingData["currentMatches"].append(matchData)
 
     return matchmakingData
 
