@@ -848,7 +848,7 @@ async def on_message(message: discord.Message):
         else:
             for id in match["usersIds"]:
                 try:
-                    user_in_match.remove(id)
+                    user_in_match.remove(str(id))
                 except:
                     pass
 
