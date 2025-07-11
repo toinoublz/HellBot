@@ -573,12 +573,13 @@ async def on_voice_state_update(
 
             except asyncio.TimeoutError:
                 match = availableTeamsPairsScores.pop(0)
+                print(match)
                 await matchmaking_logs(f"User in match: {user_in_match}")
-                if not any([match[0][0].split('_')[0] in user_in_match,match[0][0].split('_')[1] in user_in_match,match[1][0].split('_')[0] in user_in_match,match[1][0].split('_')[1] in user_in_match]):
+                if not any([match[0][0].split('_')[0] in user_in_match,match[0][0].split('_')[1] in user_in_match,match[0][1].split('_')[0] in user_in_match,match[0][1].split('_')[1] in user_in_match]):
                     await matchmaking_logs(
                         f"No better match found, launching a match between {match[0][0]} and {match[0][1]}"
                     )
-                    user_in_match.extend([match[0][0].split('_')[0],match[0][0].split('_')[1],match[1][0].split('_')[0],match[1][0].split('_')[1],])
+                    user_in_match.extend([match[0][0].split('_')[0],match[0][0].split('_')[1],match[0][1].split('_')[0],match[0][1].split('_')[1],])
                     await matchmaking_logs(f"User in match: {user_in_match}")
                     matchmakingData = await hc.create_match(
                         match, matchmakingData, after.channel
