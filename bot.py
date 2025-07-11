@@ -29,6 +29,17 @@ db = DB.DB("hellbot_gg")
 invites_before = {}
 tzParis = ZoneInfo("Europe/Paris")
 
+async def matchmaking_logs(content): 
+    logs_channel_id = db.get("matchmaking_logs_channel_id")
+    if not logs_channel_id:
+        return
+
+    channel = bot.get_channel(logs_channel_id)
+    if not channel:
+        return
+
+    await channel.send(f"[<t:{int(datetime.now().timestamp())}:T>] " + str(content))
+
 @tasks.loop(time=d_time(19, 00, 00, tzinfo=tzParis))
 async def update_flags():
     try:
@@ -402,7 +413,6 @@ async def on_voice_state_update(
         tempVocalsChannelsId.append(createdVocal.id)
         db.modify("temp_vocals_channel_id", tempVocalsChannelsId)
         await member.move_to(createdVocal)
-        return
 
 
     if (
@@ -416,17 +426,34 @@ async def on_voice_state_update(
         await before.channel.delete()
 
 
-
-    if before.channel and before.channel.id in db.get("temp_matchmaking_vocals_channel_id"):
+    if before.channel and before.channel.id in db.get("temp_matchmaking_vocals_channel_id") and after.channel != before.channel:
+        await matchmaking_logs(f"**{member.name}** left the voice channel : `{before.channel.name}`")
         matchmakingData = json.load(open("matchmaking.json", "r"))
-        if str(member.id) in matchmakingData["NM"]:
-            matchmakingData["NM"].remove(str(member.id))
-        elif str(member.id) in matchmakingData["NMPZ"]:
-            matchmakingData["NMPZ"].remove(str(member.id))
+        teamToRemove = None
+        for team in matchmakingData["pendingTeams"]["NM"]:
+            if str(member.id) in team:
+                teamToRemove = team
+                break
+        if teamToRemove is not None:
+            matchmakingData["pendingTeams"]["NM"].remove(teamToRemove)
+        for team in matchmakingData["pendingTeams"]["NMPZ"]:
+            if str(member.id) in team:
+                teamToRemove = team
+                break
+        if teamToRemove is not None:
+            matchmakingData["pendingTeams"]["NMPZ"].remove(teamToRemove)
+        if "Team Ready - " in before.channel.name or len(before.channel.members) == 0:
+            await matchmaking_logs("Deleting voice channel : `" + before.channel.name + "` because at least one member left or the voice channel was empty")
+            try:
+                await before.channel.delete()
+            except:
+                pass
         json.dump(matchmakingData, open("matchmaking.json", "w"))
 
 
+
     if after.channel and after.channel.id == db.get("matchmaking_voc_create_channel_id"):
+        await matchmaking_logs(f"**{member.name}** joined the voice channel : `{after.channel.name}` - Creating waiting vocal")
         createdVocal = await after.channel.category.create_voice_channel(
             f"Waiting for mate - {member.name}"
         )
@@ -434,36 +461,25 @@ async def on_voice_state_update(
         tempVocalsChannelsId.append(createdVocal.id)
         db.modify("temp_matchmaking_vocals_channel_id", tempVocalsChannelsId)
         await member.move_to(createdVocal)
-        return
 
-    if (
-        before.channel
-        and before.channel.id in db.get("matchmaking_voc_create_channel_id")
-        and len(before.channel.members) == 0
-    ):
-        if before.channel.name.startswith("Pending Match") and before.channel.id == hc.player_in_match(member.id):
+
+
+    if after.channel and after.channel.name.startswith("Waiting for mate") and before.channel != after.channel:
+        await matchmaking_logs(f"**{member.name}** joined the voice channel : `{after.channel.name}`")
+        teamName = hc.isTeamConnected(after.channel.members)
+        if len(after.channel.members) == 2 and teamName is None:
+            await matchmaking_logs(f"Both players are not in a team : **{member.name}** has been disconnected")
             try:
-                try:
-                    await member.send("Your team vocal is empty, you have 5 minutes to rejoin otherwise your match will be canceled.")
-                except:
-                    pass
-                await bot.wait_for("on_voice_state_update",check=lambda m,b,a: a.channel and a.channel.id == before.channel.id and m == member, timeout=300)
-                return
-
-            except asyncio.TimeoutError:
-                match = hc.find_match_with_user_id(member.id)
-                matchmakingData = await hc.close_match(match, json.load(open("matchmaking.json", "r")), before.channel)
-                json.dump(matchmakingData, open("matchmaking.json", "w"))
-
-        tempVocalsChannelsId = db.get("matchmaking_voc_create_channel_id")
-        tempVocalsChannelsId.remove(before.channel.id)
-        db.modify("matchmaking_voc_create_channel_id", tempVocalsChannelsId)
-        await before.channel.delete()
-
-
-    if after.channel and after.channel.name.startswith("Waiting for mate") and (teamName:=hc.isTeamConnected(after.channel.members)) is not None:
+                await member.send(
+                    "You have to create a team with the other player before joining the voice channel")
+            except:
+                pass
+            await member.move_to(None)
+            return
+        if teamName is None:
+            return
+        await matchmaking_logs(f"Team **{teamName}** is ready")
         await after.channel.edit(name=f"Team Ready - {teamName}")
-
         matchmakingData = json.load(open("matchmaking.json", "r"))
         member1 = member.guild.get_member(int(teamName.split("_")[0]))
         member2 = member.guild.get_member(int(teamName.split("_")[1]))
@@ -473,19 +489,23 @@ async def on_voice_state_update(
 
         if NMRole in member1.roles and NMRole in member2.roles:
             matchmakingData["pendingTeams"]["NM"].append(teamName)
+            await matchmaking_logs(f"**{teamName}** added to NM queue")
             check = True
         if NMPZRole in member1.roles and NMPZRole in member2.roles:
             matchmakingData["pendingTeams"]["NMPZ"].append(teamName)
+            await matchmaking_logs(f"**{teamName}** added to NMPZ queue")
             check = True
+        json.dump(matchmakingData, open("matchmaking.json", "w"))
 
         if not check:
+            await matchmaking_logs(f"**{teamName}** not added to queue because neither both players are NM nor NMPZ")
             try:
-                await member1.send("Hello, you and your mate need to be both registered as NM or NMPZ players to join the queue.")
+                await member1.send("Hello, you and your mate need to be both registered as NM or NMPZ players to join the queue in the sign-up channel.")
             except:
                 pass
 
             try:
-                await member2.send("Hello, you and your mate need to be both registered as NM or NMPZ players to join the queue.")
+                await member2.send("Hello, you and your mate need to be both registered as NM or NMPZ players to join the queue in the sign-up channel.")
             except:
                 pass
             return
@@ -493,27 +513,30 @@ async def on_voice_state_update(
 
         availableTeamsPairsScores = hc.watch_for_matches(matchmakingData)
 
-        while len(availableTeamsPairsScores) > 0 and availableTeamsPairsScores[0][1] >= 0.5:
-            match = availableTeamsPairsScores[0]
-
-            matchmakingData = await hc.create_match(match, matchmakingData, after.channel)
-
-            availableTeamsPairsScores = hc.watch_for_matches(matchmakingData)
-
+        if len(availableTeamsPairsScores) == 0:
+            await matchmaking_logs("No match available")
+            return
 
         while len(availableTeamsPairsScores) > 0:
             ### Matches availables but score not good enough
             try:
-                await bot.wait_for("on_voice_state_update", check=lambda _, __, after: after.channel and after.channel.name.startswith("Waiting for mate") and (hc.isTeamConnected(after.channel.members)) is not None, timeout=60)
+                timeout = min((1.0 - availableTeamsPairsScores[0][1]) * 100, 60)
+                await matchmaking_logs("Match seeking done, best score: " + str(availableTeamsPairsScores[0][1]) + ", waiting for " + str(timeout) + " seconds to see if another match is available")
+                if timeout < 5:
+                    raise(asyncio.TimeoutError)
+                await bot.wait_for("on_voice_state_update", check=lambda _, __, after: after.channel and after.channel.name.startswith("Waiting for mate") and (hc.isTeamConnected(after.channel.members)) is not None, timeout=timeout)
+
             except asyncio.TimeoutError:
-                match = availableTeamsPairsScores[0]
+                match = availableTeamsPairsScores.pop(0)
+                await matchmaking_logs(f"No better match found, launching a match between {match[0][0]} and {match[0][1]}")
 
                 matchmakingData = await hc.create_match(match, matchmakingData, after.channel)
 
                 availableTeamsPairsScores = hc.watch_for_matches(matchmakingData)
 
-        json.dump(matchmakingData, open("matchmaking.json", "w"))
-
+            json.dump(matchmakingData, open("matchmaking.json", "w"))
+        
+        await matchmaking_logs("No more match available")
 
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
@@ -747,36 +770,49 @@ async def on_message(message: discord.Message):
 
     if message.channel.id == db.get("summary_links_channel_id"):
         duelId = re.search(r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", message.content)
+        await matchmaking_logs(f"**{message.author.name}** sent a summary link: `{message.content}`")
+
         if not duelId:
             await message.delete()
+            await matchmaking_logs(f"Can't find a duelId in the summary link: `{message.content}`")
             return
 
         match = hc.find_match_with_user_id(message.author.id)
         if not match:
             await message.delete()
+            await matchmaking_logs(f"Can't find a match with the user id: `{message.author.id}`")
             return
 
         duelId = duelId.group()
 
-        await hc.process_duel_link(duelId)
         matchmakingData = await hc.close_match(match, json.load(open("matchmaking.json", "r")), message.channel)
+
+
+        winningTeam, loosingTeam = await hc.process_duel_link(duelId, match, matchmakingData)
+
+        inscriptionData = json.load(open("inscriptions.json", "r"))
+        if duelId not in inscriptionData["teams"][winningTeam]["previousDuelIds"]:
+            inscriptionData["teams"][winningTeam]["score"].append('1')
+            inscriptionData["teams"][winningTeam]["previousOpponents"].append(loosingTeam)
+            inscriptionData["teams"][winningTeam]["previousDuelIds"].append(duelId)
+            inscriptionData["teams"][winningTeam]["lastGamemode"] = match["matchType"]
+
+            inscriptionData["teams"][loosingTeam]["score"].append('0')
+            inscriptionData["teams"][loosingTeam]["previousOpponents"].append(winningTeam)
+            inscriptionData["teams"][loosingTeam]["previousDuelIds"].append(duelId)
+            inscriptionData["teams"][loosingTeam]["lastGamemode"] = match["matchType"]
+
+            for playersId in match["usersIds"]:
+                try:
+                    member = message.guild.get_member(playersId)
+                    await member.send(f"Thanks for your participation ! Thanks to you $0.10 has been added to the pot ! To play again, just recreate a new vocal by clicking on <#1392420336506503248> and tell your mate to rejoin !")
+                except:
+                    pass
+
+        json.dump(inscriptionData, open("inscriptions.json", "w"))
         json.dump(matchmakingData, open("matchmaking.json", "w"))
 
         await message.add_reaction("✅")
-
-
-
-# @bot.command(name='hello')
-# async def hello(ctx):
-#     """Répond avec un message de salutation"""
-#     await ctx.send(f'👋 Bonjour {ctx.author.name}!')
-
-
-@bot.command(name="ping")
-async def ping(ctx):
-    """Vérifie la latence du bot"""
-    await ctx.send(f"Pong! Latence: {round(bot.latency * 1000)}ms")
-
 
 # Lancer le bot
 if __name__ == "__main__":

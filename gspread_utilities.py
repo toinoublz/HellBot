@@ -75,6 +75,6 @@ async def add_duels_infos(data: dict):
             data["LnumberOfPlayers"],
             data["LuserNames"],
             data["Lcountries"]
-        ]
+        ], value_input_option="USER_ENTERED"
     )
     return
