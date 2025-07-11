@@ -805,7 +805,7 @@ async def on_message(message: discord.Message):
             for playersId in match["usersIds"]:
                 try:
                     member = message.guild.get_member(playersId)
-                    await member.send(f"Thanks for your participation ! Thanks to you $0.10 has been added to the pot ! To play again, just recreate a new vocal by clicking on <#1392420336506503248> and tell your mate to rejoin !")
+                    await member.send(f"Thanks for your participation ! To play again, just recreate a new vocal by clicking on <#1392420336506503248> and tell your mate to rejoin !")
                 except:
                     pass
 

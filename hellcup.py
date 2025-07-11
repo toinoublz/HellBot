@@ -11,6 +11,7 @@ from DB import DB
 
 load_dotenv()
 
+
 async def get_geoguessr_flag_and_pro(geoguessr_id: str):
     async with aiohttp.ClientSession() as session:
         async with session.get(
@@ -263,20 +264,47 @@ async def create_team(member1: discord.Member, member2: discord.Member):
         print(e)
     return member1["surname"], member2["surname"]
 
+
 def get_duel_score(team1: dict, team2: dict, gamemode: str) -> float:
-    allPros = [team1["member1"]["isPro"], team1["member2"]["isPro"], team2["member1"]["isPro"], team2["member2"]["isPro"]]
-    allFlags = [team1["member1"]["flag"], team1["member2"]["flag"], team2["member1"]["flag"], team2["member2"]["flag"]]
-    allPlayers = [team1["member1"]["discordId"], team1["member2"]["discordId"], team2["member1"]["discordId"], team2["member2"]["discordId"]]
+    allPros = [
+        team1["member1"]["isPro"],
+        team1["member2"]["isPro"],
+        team2["member1"]["isPro"],
+        team2["member2"]["isPro"],
+    ]
+    allFlags = [
+        team1["member1"]["flag"],
+        team1["member2"]["flag"],
+        team2["member1"]["flag"],
+        team2["member2"]["flag"],
+    ]
+    allPlayers = [
+        team1["member1"]["discordId"],
+        team1["member2"]["discordId"],
+        team2["member1"]["discordId"],
+        team2["member2"]["discordId"],
+    ]
     if not (any(allPros) and len(set(allFlags)) > 1 and len(set(allPlayers)) == 4):
         return 0.0
-    previousOpponentsScore = (0.5 if team1["teamName"] not in team2["previousOpponents"] else min(0.1 * (team2["previousOpponents"][::-1].index(team1["teamName"]) + 1),0.5)) + \
-                             (0.5 if team2["teamName"] not in team1["previousOpponents"] else min(0.1 * (team1["previousOpponents"][::-1].index(team2["teamName"]) + 1),0.5))
+    previousOpponentsScore = (
+        0.5
+        if team1["teamName"] not in team2["previousOpponents"]
+        else min(
+            0.1 * (team2["previousOpponents"][::-1].index(team1["teamName"]) + 1), 0.5
+        )
+    ) + (
+        0.5
+        if team2["teamName"] not in team1["previousOpponents"]
+        else min(
+            0.1 * (team1["previousOpponents"][::-1].index(team2["teamName"]) + 1), 0.5
+        )
+    )
 
     if len(team1["score"]) >= 5 and len(team2["score"]) >= 5:
         team1ScoreRatio = sum(team1["score"]) / len(team1["score"])
         team2ScoreRatio = sum(team2["score"]) / len(team2["score"])
         diff = abs(team1ScoreRatio - team2ScoreRatio)
-        previousOpponentsScore -= (diff*0.2)
+        previousOpponentsScore -= diff * 0.2
     if team1["lastGamemode"] == gamemode:
         previousOpponentsScore -= 0.01
     if team2["lastGamemode"] == gamemode:
@@ -284,39 +312,90 @@ def get_duel_score(team1: dict, team2: dict, gamemode: str) -> float:
 
     return previousOpponentsScore
 
-def watch_for_matches(matchmakingData: dict) -> list[tuple[tuple[str, str], float, str]]:
+
+def watch_for_matches(
+    matchmakingData: dict,
+) -> list[tuple[tuple[str, str], float, str]]:
     inscriptionData = json.load(open("inscriptions.json", "r"))
     NMAvailableTeams = matchmakingData["pendingTeams"]["NM"]
     NMPZAvailableTeams = matchmakingData["pendingTeams"]["NMPZ"]
 
-    NMAvailableTeamsPairs = [(NMAvailableTeams[i], NMAvailableTeams[j]) for i in range(len(NMAvailableTeams)) for j in range(i+1, len(NMAvailableTeams)) if i != j]
-    NMAvailableTeamsPairsScores = [get_duel_score(inscriptionData["teams"][team1], inscriptionData["teams"][team2], "NM 30s") for team1, team2 in NMAvailableTeamsPairs]
-    NMPZAvailableTeamsPairs = [(NMPZAvailableTeams[i], NMPZAvailableTeams[j]) for i in range(len(NMPZAvailableTeams)) for j in range(i+1, len(NMPZAvailableTeams)) if i != j]
-    NMPZAvailableTeamsPairsScores = [get_duel_score(inscriptionData["teams"][team1], inscriptionData["teams"][team2], "NMPZ 15s") for team1, team2 in NMPZAvailableTeamsPairs]
+    NMAvailableTeamsPairs = [
+        (NMAvailableTeams[i], NMAvailableTeams[j])
+        for i in range(len(NMAvailableTeams))
+        for j in range(i + 1, len(NMAvailableTeams))
+        if i != j
+    ]
+    NMAvailableTeamsPairsScores = [
+        get_duel_score(
+            inscriptionData["teams"][team1], inscriptionData["teams"][team2], "NM 30s"
+        )
+        for team1, team2 in NMAvailableTeamsPairs
+    ]
+    NMPZAvailableTeamsPairs = [
+        (NMPZAvailableTeams[i], NMPZAvailableTeams[j])
+        for i in range(len(NMPZAvailableTeams))
+        for j in range(i + 1, len(NMPZAvailableTeams))
+        if i != j
+    ]
+    NMPZAvailableTeamsPairsScores = [
+        get_duel_score(
+            inscriptionData["teams"][team1], inscriptionData["teams"][team2], "NMPZ 15s"
+        )
+        for team1, team2 in NMPZAvailableTeamsPairs
+    ]
 
-    NMAvailableTeamsPairsScores = sorted(zip(NMAvailableTeamsPairs, NMAvailableTeamsPairsScores), key=lambda x: x[1], reverse=True)
-    NMPZAvailableTeamsPairsScores = sorted(zip(NMPZAvailableTeamsPairs, NMPZAvailableTeamsPairsScores), key=lambda x: x[1], reverse=True)
+    NMAvailableTeamsPairsScores = sorted(
+        zip(NMAvailableTeamsPairs, NMAvailableTeamsPairsScores),
+        key=lambda x: x[1],
+        reverse=True,
+    )
+    NMPZAvailableTeamsPairsScores = sorted(
+        zip(NMPZAvailableTeamsPairs, NMPZAvailableTeamsPairsScores),
+        key=lambda x: x[1],
+        reverse=True,
+    )
 
-    availableTeamsPairsScores = [(team[0], team[1], "NM 30s") for team in NMAvailableTeamsPairsScores] + [(team[0], team[1], "NMPZ 15s") for team in NMPZAvailableTeamsPairsScores]
+    availableTeamsPairsScores = [
+        (team[0], team[1], "NM 30s") for team in NMAvailableTeamsPairsScores
+    ] + [(team[0], team[1], "NMPZ 15s") for team in NMPZAvailableTeamsPairsScores]
 
-    availableTeamsPairsScores = sorted(availableTeamsPairsScores, key=lambda x: x[1], reverse=True)
+    availableTeamsPairsScores = sorted(
+        availableTeamsPairsScores, key=lambda x: x[1], reverse=True
+    )
 
-    availableTeamsPairsScores = [match for match in availableTeamsPairsScores if match[1] > 0]
+    availableTeamsPairsScores = [
+        match for match in availableTeamsPairsScores if match[1] > 0
+    ]
 
     return availableTeamsPairsScores
+
 
 def isTeamConnected(members: list[discord.Member]) -> str:
     inscriptionData = json.load(open("inscriptions.json", "r"))
     membersIds = [member.id for member in members]
     for team in inscriptionData["teams"].values():
-        if int(team["member1"]["discordId"]) in membersIds and int(team["member2"]["discordId"]) in membersIds:
+        if (
+            int(team["member1"]["discordId"]) in membersIds
+            and int(team["member2"]["discordId"]) in membersIds
+        ):
             return team["teamName"]
     return None
 
-async def create_match(match: tuple[tuple[str, str], float, str], matchmakingData: dict, channel: discord.VoiceChannel) -> dict:
+
+async def create_match(
+    match: tuple[tuple[str, str], float, str],
+    matchmakingData: dict,
+    channel: discord.VoiceChannel,
+) -> dict:
     teams = match[0]
     matchType = match[2]
-    allIds = [int(teams[0].split("_")[0]), int(teams[0].split("_")[1]), int(teams[1].split("_")[0]), int(teams[1].split("_")[1])]
+    allIds = [
+        int(teams[0].split("_")[0]),
+        int(teams[0].split("_")[1]),
+        int(teams[1].split("_")[0]),
+        int(teams[1].split("_")[1]),
+    ]
     users = [channel.guild.get_member(id) for id in allIds]
     flags = [get_flag(id) for id in allIds]
 
@@ -326,8 +405,12 @@ async def create_match(match: tuple[tuple[str, str], float, str], matchmakingDat
     for user in users:
         overwrites[user] = discord.PermissionOverwrite(view_channel=True)
 
-    matchTextChannel = await channel.category.create_text_channel(f"Match-{flags[0]}&{flags[1]}-vs-{flags[2]}&{flags[3]}", overwrites=overwrites)
-    await matchTextChannel.send(f"{users[0].mention} & {users[1].mention} vs {users[2].mention} & {users[3].mention}\n\nYou can chat here. Here are the rules for your duel :\n- Gamemode : {matchType}\n- Every player should guess at least once during the duel.\n- 6000 health points, 0 round without multipliers, map : {'An Arbitrary World' if matchType == 'NM 30s' else 'An Arbitrary Rural World'}.\n- Don't forget to send the summary link in <#1384834903245590588>.\n\nGL&HF !")
+    matchTextChannel = await channel.category.create_text_channel(
+        f"Match-{flags[0]}&{flags[1]}-vs-{flags[2]}&{flags[3]}", overwrites=overwrites
+    )
+    await matchTextChannel.send(
+        f"{users[0].mention} & {users[1].mention} vs {users[2].mention} & {users[3].mention}\n\nYou can chat here. Here are the rules for your duel :\n- Gamemode : {matchType}\n- Map : {'An Arbitrary World' if matchType == 'NM 30s' else 'An Arbitrary Rural World'}\n- Every player should guess at least once during the duel.\n- 6000hp at start\n- Multiplier 0.5\nRound without multiplier : 0\n\n**At the end of your duel**\n- Don't forget to send the summary link in <#1384834903245590588>\n- Return to <#1392420336506503248> if you want to play again\n\nGL&HF !"
+    )
 
     teamsVocsIds = []
 
@@ -341,10 +424,10 @@ async def create_match(match: tuple[tuple[str, str], float, str], matchmakingDat
 
     matchData = {
         "teams": teams,
-        "usersIds" : allIds,
+        "usersIds": allIds,
         "matchType": matchType,
         "matchTextChannelId": matchTextChannel.id,
-        "teamsVocsIds": teamsVocsIds
+        "teamsVocsIds": teamsVocsIds,
     }
 
     if teams[0] in matchmakingData["pendingTeams"]["NM"]:
@@ -360,7 +443,10 @@ async def create_match(match: tuple[tuple[str, str], float, str], matchmakingDat
 
     return matchmakingData
 
-async def close_match(match: dict, matchmakingData: dict, channel: discord.abc.GuildChannel) -> dict:
+
+async def close_match(
+    match: dict, matchmakingData: dict, channel: discord.abc.GuildChannel
+) -> dict:
 
     try:
         await channel.guild.get_channel(match["matchTextChannelId"]).delete()
@@ -369,12 +455,14 @@ async def close_match(match: dict, matchmakingData: dict, channel: discord.abc.G
 
     return matchmakingData
 
+
 def find_match_with_user_id(id: int) -> dict:
     matchmakingData = json.load(open("matchmaking.json", "r"))
     for match in matchmakingData["currentMatches"]:
         if id in match["usersIds"]:
             return match
     return None
+
 
 def player_in_match(id: int) -> int:
     matchmakingData = json.load(open("matchmaking.json", "r"))
@@ -383,63 +471,134 @@ def player_in_match(id: int) -> int:
             return match["matchTextChannelId"]
     return None
 
+
 def get_username_from_geoguessr_id(id: str) -> str:
     inscriptionData = json.load(open("inscriptions.json", "r"))
-    inscriptionDataWithGeoguessrIdAsKey = {player["geoguessrId"]: player for player in inscriptionData["players"].values()}
+    inscriptionDataWithGeoguessrIdAsKey = {
+        player["geoguessrId"]: player for player in inscriptionData["players"].values()
+    }
     return inscriptionDataWithGeoguessrIdAsKey[id]["surname"]
+
 
 def get_country_code_from_geoguessr_id(id: str) -> str:
     inscriptionData = json.load(open("inscriptions.json", "r"))
-    inscriptionDataWithGeoguessrIdAsKey = {player["geoguessrId"]: player for player in inscriptionData["players"].values()}
+    inscriptionDataWithGeoguessrIdAsKey = {
+        player["geoguessrId"]: player for player in inscriptionData["players"].values()
+    }
     return inscriptionDataWithGeoguessrIdAsKey[id]["flag"].split("_")[1][:-1]
 
-async def process_duel_link(id: str, match: dict, matchmakingData: dict) -> tuple[str, str]:
+
+async def process_duel_link(
+    id: str, match: dict, matchmakingData: dict
+) -> tuple[str, str]:
 
     inscriptionData = json.load(open("inscriptions.json", "r"))
 
     headers = {
         "Content-Type": "application/json",
-        "cookie": f"_ncfa={os.getenv('GG_NCFA')}"
+        "cookie": f"_ncfa={os.getenv('GG_NCFA')}",
     }
 
     async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"https://game-server.geoguessr.com/api/duels/{id}",
-                headers=headers
-            ) as r:
-                js = await r.json()
+        async with session.get(
+            f"https://game-server.geoguessr.com/api/duels/{id}", headers=headers
+        ) as r:
+            js = await r.json()
 
     winningTeamId = js["result"]["winningTeamId"]
 
     duelData = {
         "link": f"https://www.geoguessr.com/duels/{id}/summary",
         "mapName": js["options"]["map"]["name"],
-        "mapLink" : f"https://www.geoguessr.com/maps/{js['options']['map']['slug']}",
-        "gamemode" : "No Move" if js["options"]["movementOptions"]["forbidMoving"] and not js["options"]["movementOptions"]["forbidRotating"] and not js["options"]["movementOptions"]["forbidZooming"] else "NMPZ" if js["options"]["movementOptions"]["forbidMoving"] and js["options"]["movementOptions"]["forbidRotating"] and js["options"]["movementOptions"]["forbidZooming"] else "Unknown",
-        "initialHealth" : js["options"]["initialHealth"],
-        "numberOfRounds" : js["currentRoundNumber"],
-        "numberOfPlayers" : sum(len(team["players"]) for team in js["teams"]),
-        "allCountries" : ','.join([get_country_code_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"]]),
-        "WnumberOfPlayers" : sum(len(team["players"]) for team in js["teams"] if team["id"] == winningTeamId),
-        "WuserNames" : ','.join([get_username_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"]  if team["id"] == winningTeamId]),
-        "Wcountries" : ','.join([get_country_code_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"] if team["id"] == winningTeamId]),
-        "LnumberOfPlayers" : sum(len(team["players"]) for team in js["teams"] if team["id"] != winningTeamId),
-        "LuserNames" : ','.join([get_username_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"] if team["id"] != winningTeamId]),
-        "Lcountries" : ','.join([get_country_code_from_geoguessr_id(player["playerId"]) for team in js["teams"] for player in team["players"] if team["id"] != winningTeamId]),
+        "mapLink": f"https://www.geoguessr.com/maps/{js['options']['map']['slug']}",
+        "gamemode": (
+            "No Move"
+            if js["options"]["movementOptions"]["forbidMoving"]
+            and not js["options"]["movementOptions"]["forbidRotating"]
+            and not js["options"]["movementOptions"]["forbidZooming"]
+            else (
+                "NMPZ"
+                if js["options"]["movementOptions"]["forbidMoving"]
+                and js["options"]["movementOptions"]["forbidRotating"]
+                and js["options"]["movementOptions"]["forbidZooming"]
+                else "Unknown"
+            )
+        ),
+        "initialHealth": js["options"]["initialHealth"],
+        "numberOfRounds": js["currentRoundNumber"],
+        "numberOfPlayers": sum(len(team["players"]) for team in js["teams"]),
+        "allCountries": ",".join(
+            [
+                get_country_code_from_geoguessr_id(player["playerId"])
+                for team in js["teams"]
+                for player in team["players"]
+            ]
+        ),
+        "WnumberOfPlayers": sum(
+            len(team["players"]) for team in js["teams"] if team["id"] == winningTeamId
+        ),
+        "WuserNames": ",".join(
+            [
+                get_username_from_geoguessr_id(player["playerId"])
+                for team in js["teams"]
+                for player in team["players"]
+                if team["id"] == winningTeamId
+            ]
+        ),
+        "Wcountries": ",".join(
+            [
+                get_country_code_from_geoguessr_id(player["playerId"])
+                for team in js["teams"]
+                for player in team["players"]
+                if team["id"] == winningTeamId
+            ]
+        ),
+        "LnumberOfPlayers": sum(
+            len(team["players"]) for team in js["teams"] if team["id"] != winningTeamId
+        ),
+        "LuserNames": ",".join(
+            [
+                get_username_from_geoguessr_id(player["playerId"])
+                for team in js["teams"]
+                for player in team["players"]
+                if team["id"] != winningTeamId
+            ]
+        ),
+        "Lcountries": ",".join(
+            [
+                get_country_code_from_geoguessr_id(player["playerId"])
+                for team in js["teams"]
+                for player in team["players"]
+                if team["id"] != winningTeamId
+            ]
+        ),
     }
 
     await gu.add_duels_infos(duelData)
     matchmakingData["currentMatches"].remove(match)
-    winningPlayerId = [player["playerId"] for team in js["teams"] for player in team["players"]  if team["id"] == winningTeamId][0]
+    winningPlayerId = [
+        player["playerId"]
+        for team in js["teams"]
+        for player in team["players"]
+        if team["id"] == winningTeamId
+    ][0]
 
     print(match, winningPlayerId)
 
-    ggIds = [inscriptionData["players"][str(discordId)]["geoguessrId"] for discordId in match["usersIds"]]
+    ggIds = [
+        inscriptionData["players"][str(discordId)]["geoguessrId"]
+        for discordId in match["usersIds"]
+    ]
 
-    winningTeam = match["teams"][0] if ggIds.index(winningPlayerId) > 2 else match["teams"][1]
-    otherTeam = match["teams"][0] if ggIds.index(winningPlayerId) <= 2 else match["teams"][1]
+    winningTeam = (
+        match["teams"][0] if ggIds.index(winningPlayerId) > 2 else match["teams"][1]
+    )
+    otherTeam = (
+        match["teams"][0] if ggIds.index(winningPlayerId) <= 2 else match["teams"][1]
+    )
 
     return (winningTeam, otherTeam)
+
 
 def reset_insc():
     inscriptionData = json.load(open("inscriptions.json", "r"))
@@ -451,8 +610,5 @@ def reset_insc():
     json.dump(inscriptionData, open("inscriptions.json", "w"))
 
 
-        
-
-    
 if __name__ == "__main__":
     reset_insc()
