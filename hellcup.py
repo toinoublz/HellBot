@@ -409,7 +409,7 @@ async def create_match(
         f"Match-{flags[0]}&{flags[1]}-vs-{flags[2]}&{flags[3]}", overwrites=overwrites
     )
     await matchTextChannel.send(
-        f"{users[0].mention} & {users[1].mention} vs {users[2].mention} & {users[3].mention}\n\nYou can chat here. Here are the rules for your duel :\n- Gamemode : {matchType}\n- Map : {'An Arbitrary World' if matchType == 'NM 30s' else 'An Arbitrary Rural World'}\n- Every player should guess at least once during the duel.\n- 6000hp at start\n- Multiplier 0.5\nRound without multiplier : 0\n\n**At the end of your duel**\n- Don't forget to send the summary link in <#1384834903245590588>\n- Return to <#1392420336506503248> if you want to play again\n\nGL&HF !"
+        f"{users[0].mention} & {users[1].mention} vs {users[2].mention} & {users[3].mention}\n\nYou can chat here. Here are the rules for your duel :\n- Gamemode : {matchType}\n- Map : {'An Arbitrary World' if matchType == 'NM 30s' else 'An Arbitrary Rural World'}\n- Every player should guess at least once during the duel.\n- 6000hp at start\n- Multiplier 0.5\n- Round without multiplier : 0\n\n**At the end of your duel**\n- Don't forget to send the summary link in <#1384834903245590588>\n- Return to <#1392420336506503248> if you want to play again\n\nGL&HF !"
     )
 
     teamsVocsIds = []
