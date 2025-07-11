@@ -583,8 +583,6 @@ async def process_duel_link(
         if team["id"] == winningTeamId
     ][0]
 
-    print(match, winningPlayerId)
-
     ggIds = [
         inscriptionData["players"][str(discordId)]["geoguessrId"]
         for discordId in match["usersIds"]
