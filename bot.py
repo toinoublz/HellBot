@@ -15,6 +15,8 @@ import DB
 import hellcup as hc
 import modals as md
 
+user_in_match = []
+
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -571,13 +573,15 @@ async def on_voice_state_update(
 
             except asyncio.TimeoutError:
                 match = availableTeamsPairsScores.pop(0)
-                await matchmaking_logs(
-                    f"No better match found, launching a match between {match[0][0]} and {match[0][1]}"
-                )
-
-                matchmakingData = await hc.create_match(
-                    match, matchmakingData, after.channel
-                )
+                if not any([match[0][0].split('_')[0] in user_in_match,match[0][0].split('_')[1] in user_in_match,match[1][0].split('_')[0] in user_in_match,match[1][0].split('_')[1] in user_in_match]):
+                    await matchmaking_logs(
+                        f"No better match found, launching a match between {match[0][0]} and {match[0][1]}"
+                    )
+                    user_in_match.extend([match[0][0].split('_')[0],match[0][0].split('_')[1],match[1][0].split('_')[0],match[1][0].split('_')[1],])
+                    await matchmaking_logs(f"User in match: {user_in_match}")
+                    matchmakingData = await hc.create_match(
+                        match, matchmakingData, after.channel
+                    )
 
                 availableTeamsPairsScores = hc.watch_for_matches(matchmakingData)
 
@@ -839,6 +843,12 @@ async def on_message(message: discord.Message):
             await matchmaking_logs(
                 f"Can't find a match with the user id: `{message.author.id}`"
             )
+        else:
+            for id in match["usersIds"]:
+                try:
+                    user_in_match.remove(id)
+                except:
+                    pass
 
         duelId = duelId.group()
 
