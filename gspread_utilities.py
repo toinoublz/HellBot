@@ -45,23 +45,38 @@ async def gspread_new_registration(member: dict):
     )
     return
 
+
 async def gspread_new_team(team: list[dict]):
     clientg = await connect_gsheet_api()
     spreadsheet = await clientg.open("[ORGA] Guess and Give Inscriptions")
     worksheet = await spreadsheet.worksheet("Teams")
     await worksheet.append_row(
-        [team[0]["discordId"], team[0]["geoguessrId"], team[0]["surname"], team[0]["flag"],
-         team[1]["discordId"], team[1]["geoguessrId"], team[1]["surname"], team[1]["flag"]]
+        [
+            team[0]["discordId"],
+            team[0]["geoguessrId"],
+            team[0]["surname"],
+            team[0]["flag"],
+            team[1]["discordId"],
+            team[1]["geoguessrId"],
+            team[1]["surname"],
+            team[1]["flag"],
+        ]
     )
     return
 
+
 async def add_duels_infos(data: dict):
     clientg = await connect_gsheet_api()
-    spreadsheet = await clientg.open("Guess & Give Summer 2025 - International Duels - Hellias Version")
+    spreadsheet = await clientg.open(
+        "Guess & Give Summer 2025 - International Duels - Hellias Version"
+    )
     worksheet = await spreadsheet.worksheet("raw_data")
     await worksheet.append_row(
         [
-            datetime.now().strftime("%d/%m/%Y %H:%M:%S"),'', '', '',
+            datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            "",
+            "",
+            "",
             data["link"],
             f"=HYPERLINK(\"{data['mapLink']}\", \"{data['mapName']}\")",
             data["gamemode"],
@@ -74,7 +89,8 @@ async def add_duels_infos(data: dict):
             data["Wcountries"],
             data["LnumberOfPlayers"],
             data["LuserNames"],
-            data["Lcountries"]
-        ], value_input_option="USER_ENTERED"
+            data["Lcountries"],
+        ],
+        value_input_option="USER_ENTERED",
     )
     return
