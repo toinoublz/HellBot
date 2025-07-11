@@ -421,7 +421,7 @@ async def create_match(
 
     short_id = generate_short_id(allIds)
 
-    if any([short_id in voc.name for voc in channel.category.voice_channels]):
+    if not any([short_id in voc.name for voc in channel.category.voice_channels]):
         matchTextChannel = await channel.category.create_text_channel(
             f"Match-{flags[0]}&{flags[1]}-vs-{flags[2]}&{flags[3]} ({short_id})", overwrites=overwrites
         )
