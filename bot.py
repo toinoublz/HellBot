@@ -860,14 +860,18 @@ async def on_message(message: discord.Message):
                     loosingTeam
                 )
                 inscriptionData["teams"][winningTeam]["previousDuelIds"].append(duelId)
-                inscriptionData["teams"][winningTeam]["lastGamemode"] = match["matchType"]
+                inscriptionData["teams"][winningTeam]["lastGamemode"] = match[
+                    "matchType"
+                ]
 
                 inscriptionData["teams"][loosingTeam]["score"].append("0")
                 inscriptionData["teams"][loosingTeam]["previousOpponents"].append(
                     winningTeam
                 )
                 inscriptionData["teams"][loosingTeam]["previousDuelIds"].append(duelId)
-                inscriptionData["teams"][loosingTeam]["lastGamemode"] = match["matchType"]
+                inscriptionData["teams"][loosingTeam]["lastGamemode"] = match[
+                    "matchType"
+                ]
 
                 for playersId in match["usersIds"]:
                     try:

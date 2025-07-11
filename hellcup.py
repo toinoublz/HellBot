@@ -593,7 +593,9 @@ async def process_duel_link(
             match["teams"][0] if ggIds.index(winningPlayerId) > 2 else match["teams"][1]
         )
         otherTeam = (
-            match["teams"][0] if ggIds.index(winningPlayerId) <= 2 else match["teams"][1]
+            match["teams"][0]
+            if ggIds.index(winningPlayerId) <= 2
+            else match["teams"][1]
         )
     else:
         return (None, None)
