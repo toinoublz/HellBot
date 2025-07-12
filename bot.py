@@ -104,7 +104,7 @@ async def log_error(error: Exception, ctx=None):
         traceback.format_exception(type(error), error, error.__traceback__)
     )
     if len(error_details) > 1024:  # Discord limite la taille des fields
-        error_details = error_details[:-1021] + "..."
+        error_details = error_details[-1021:] + "..."
 
     embed.add_field(name="Type d'erreur", value=type(error).__name__, inline=False)
     # embed.add_field(name="Message d'erreur", value=str(error), inline=False)
@@ -450,13 +450,19 @@ async def on_voice_state_update(
                 teamToRemove = team
                 break
         if teamToRemove is not None:
-            matchmakingData["pendingTeams"]["NM"].remove(teamToRemove)
+            try:
+                matchmakingData["pendingTeams"]["NM"].remove(teamToRemove)
+            except:
+                pass
         for team in matchmakingData["pendingTeams"]["NMPZ"]:
             if str(member.id) in team:
                 teamToRemove = team
                 break
         if teamToRemove is not None:
-            matchmakingData["pendingTeams"]["NMPZ"].remove(teamToRemove)
+            try:
+                matchmakingData["pendingTeams"]["NMPZ"].remove(teamToRemove)
+            except:
+                pass
         if "Team Ready - " in before.channel.name or len(before.channel.members) == 0:
             await matchmaking_logs(
                 "Deleting voice channel : `"
