@@ -845,26 +845,28 @@ async def on_message(message: discord.Message):
             )
             return
 
-        match = hc.find_match_with_user_id(message.author.id)
-        if not match:
-            await matchmaking_logs(
-                f"Can't find a match with the user id: `{message.author.id}`"
-            )
-        else:
-            for id in match["usersIds"]:
-                try:
-                    user_in_match.remove(str(id))
-                except:
-                    pass
+        # match = hc.find_match_with_user_id(message.author.id)
+        # if not match:
+        #     await matchmaking_logs(
+        #         f"Can't find a match with the user id: `{message.author.id}`"
+        #     )
+        # else:
+        #     for id in match["usersIds"]:
+        #         try:
+        #             user_in_match.remove(str(id))
+        #         except:
+        #             pass
+
+        match = None
 
         duelId = duelId.group()
 
         matchmakingData = json.load(open("matchmaking.json", "r"))
 
-        if match:
-            matchmakingData = await hc.close_match(
-                match, matchmakingData, message.channel
-            )
+        # if match:
+        #     matchmakingData = await hc.close_match(
+        #         match, matchmakingData, message.channel
+        #     )
 
         winningTeam, loosingTeam = await hc.process_duel_link(
             duelId, match, matchmakingData
