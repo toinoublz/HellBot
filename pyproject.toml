@@ -1,0 +1,10 @@
+[tool.black]
+line-length = 120  # Remplace 120 par la longueur de ligne que tu souhaites
+
+[tool.ruff]
+select = ["ASYNC"]
+ignore = []
+
+[tool.flake8]
+ignore = ["E501"]
+max-line-length = 120

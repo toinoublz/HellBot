@@ -1,14 +1,15 @@
 import os
+import traceback
+from datetime import datetime
+
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-import asyncio
+
 import DB
-import traceback
-from datetime import datetime
-import modals as md
+import discord_logs as dl
 import hellcup as hc
-from math import sqrt, ceil
+import modals as md
 
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
@@ -18,34 +19,46 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="/", intents=intents)
 
+
 db = DB.DB("hellbot")
 
+log = dl.DiscordLog(db.get("logs_channel_id"))
 # Variable globale pour stocker les invitations
-invites_before = {}
+invitesBefore = {}
 
 @bot.event
 async def on_ready():
+    """
+    Événement appelé lorsque le bot est connecté à Discord.
+
+    Cet événement est appelé lorsque le bot est prêt à recevoir des commandes et des événements.
+    Il s'agit d'un événement asynchrone qui est appelé automatiquement par Discord.
+
+    Lorsque cet événement est appelé, le bot charge les invitations existantes pour chaque serveur,
+    puis change son statut pour afficher le nombre de membres du serveur HellCup.
+    """
     print(f'{bot.user} est connecté à Discord!')
+    log.add_guild(bot.get_guild(db.get("server_id")))
     # Charger les invitations existantes pour chaque serveur
     for guild in bot.guilds:
-        invites_before[guild.id] = await guild.invites()
-        invites_before[guild.id] = {inv.code: inv for inv in invites_before[guild.id]}
+        invitesBefore[guild.id] = await guild.invites()
+        invitesBefore[guild.id] = {inv.code: inv for inv in invitesBefore[guild.id]}
 
-    hellcup_guild = bot.get_guild(db.get("hellcup_guild_id"))
+    hellcupGuild = bot.get_guild(db.get("hellcup_guild_id"))
     await bot.change_presence(
         activity=discord.Activity(
-            name=f"{len(hellcup_guild.members)} gens (trop) cools !",
+            name=f"{len(hellcupGuild.members)} gens (trop) cools !",
             type=discord.ActivityType.watching,
         )
     )
 
 async def log_error(error: Exception, ctx = None):
     """Envoie les erreurs dans le canal des super logs"""
-    logs_channel_id = db.get("logs_channel_id")
-    if not logs_channel_id:
+    logsChannelId = db.get("logs_channel_id")
+    if not logsChannelId:
         return  # Si pas de canal configuré, on ne fait rien
 
-    channel = bot.get_channel(logs_channel_id)
+    channel = bot.get_channel(logsChannelId)
     if not channel:
         return
 
@@ -58,14 +71,14 @@ async def log_error(error: Exception, ctx = None):
     )
 
     # Ajouter les détails de l'erreur
-    error_details = "".join(traceback.format_exception(type(error), error, error.__traceback__))
-    if len(error_details) > 1024:  # Discord limite la taille des fields
-        error_details = error_details[:1021] + "..."
+    errorDetails = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+    if len(errorDetails) > 1024:  # Discord limite la taille des fields
+        errorDetails = errorDetails[:1021] + "..."
 
     embed.add_field(name="Type d'erreur", value=type(error).__name__, inline=False)
     # embed.add_field(name="Message d'erreur", value=str(error), inline=False)
-    error_details = error_details[-1000:] if len(error_details) > 1000 else error_details
-    embed.add_field(name="Traceback", value=f"```python\n{error_details}```", inline=False)
+    errorDetails = errorDetails[-1000:] if len(errorDetails) > 1000 else errorDetails
+    embed.add_field(name="Traceback", value=f"```python\n{errorDetails}```", inline=False)
 
     # Ajouter le contexte si disponible
     if ctx:
@@ -78,7 +91,7 @@ async def log_error(error: Exception, ctx = None):
     await channel.send(embed=embed)
 
 @bot.event
-async def on_error(event, *args, **kwargs):
+async def on_error(event):
     """Capture les erreurs d'événements"""
     error = traceback.format_exc()
     await log_error(Exception(f"Erreur dans l'événement {event}:\n{error}"))
@@ -90,12 +103,17 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
 
 @bot.event
 async def on_invite_create(invite: discord.Invite):
-    logs_channel_id = db.get("logs_channel_id")
-    if not logs_channel_id:
+    """
+    Événement appelé lorsque le bot détecte la création d'une nouvelle invitation.
+    Envoie un message dans le canal des logs avec les informations sur l'invitation.
+    Met à jour la liste des invitations du serveur.
+    """
+    logsChannelId = db.get("logs_channel_id")
+    if not logsChannelId:
         return
 
-    logs_channel = bot.get_channel(logs_channel_id)
-    if logs_channel:
+    logsChannel = bot.get_channel(logsChannelId)
+    if logsChannel:
         embed = discord.Embed(
             title="Nouvelle Invitation Créée",
             color=discord.Color.blue(),
@@ -109,22 +127,31 @@ async def on_invite_create(invite: discord.Invite):
         if invite.expires_at:
             embed.add_field(name="Expire le", value=invite.expires_at.strftime("%d/%m/%Y à %H:%M"), inline=True)
         embed.set_footer(text=f"ID: {invite.inviter.id}")
-        await logs_channel.send(embed=embed)
-    invites_before[invite.guild.id] = await invite.guild.invites()
-    invites_before[invite.guild.id] = {inv.code: inv for inv in invites_before[invite.guild.id]}
+        await logsChannel.send(embed=embed)
+    invitesBefore[invite.guild.id] = await invite.guild.invites()
+    invitesBefore[invite.guild.id] = {inv.code: inv for inv in invitesBefore[invite.guild.id]}
 
 @bot.event
 async def on_message_delete(message: discord.Message):
-    logs_channel_id = db.get("logs_channel_id")
-    if not logs_channel_id:
+    """
+    Événement appelé lorsque le bot détecte la suppression d'un message.
+
+    Envoie un message dans le canal des logs avec les informations sur le message supprimé.
+
+    Si le canal des logs n'est pas configuré, cet événement ne fait rien.
+
+    Si le message a été envoyé par un bot, cet événement ne fait rien.
+    """
+    logsChannelId = db.get("logs_channel_id")
+    if not logsChannelId:
         return
 
     # Ignorer les messages des bots
     if message.author.bot:
         return
 
-    logs_channel = bot.get_channel(logs_channel_id)
-    if logs_channel:
+    logsChannel = bot.get_channel(logsChannelId)
+    if logsChannel:
         embed = discord.Embed(
             title="Message Supprimé",
             description=f"Un message a été supprimé dans {message.channel.mention}",
@@ -134,12 +161,24 @@ async def on_message_delete(message: discord.Message):
         embed.add_field(name="Auteur", value=message.author.mention, inline=False)
         embed.add_field(name="Contenu", value=message.content or "Contenu non disponible", inline=False)
         embed.set_footer(text=f"ID: {message.author.id}")
-        await logs_channel.send(embed=embed)
+        await logsChannel.send(embed=embed)
 
 @bot.event
 async def on_message_edit(before: discord.Message, after: discord.Message):
-    logs_channel_id = db.get("logs_channel_id")
-    if not logs_channel_id:
+    """Événement appelé lorsque le bot détecte la modification d'un message.
+
+    Envoie un message dans le canal des logs avec les informations sur le message modifié.
+
+    Si le canal des logs n'est pas configuré, cet événement ne fait rien.
+
+    Si le message a été envoyé par un bot, cet événement ne fait rien.
+
+    Si le contenu n'a pas changé (par exemple, uniquement un embed ajouté), cet événement ne fait rien.
+
+    """
+
+    logsChannelId = db.get("logs_channel_id")
+    if not logsChannelId:
         return
 
     # Ignorer les messages des bots
@@ -150,8 +189,8 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
     if before.content == after.content:
         return
 
-    logs_channel = bot.get_channel(logs_channel_id)
-    if logs_channel:
+    logsChannel = bot.get_channel(logsChannelId)
+    if logsChannel:
         embed = discord.Embed(
             title="Message Modifié",
             description=f"Un message a été modifié dans {before.channel.mention}",
@@ -163,20 +202,29 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
         embed.add_field(name="Après", value=after.content or "Contenu non disponible", inline=False)
         embed.add_field(name="Lien", value=f"[Aller au message]({after.jump_url})", inline=False)
         embed.set_footer(text=f"ID: {before.author.id}")
-        await logs_channel.send(embed=embed)
+        await logsChannel.send(embed=embed)
 
 @bot.event
 async def on_member_join(member: discord.Member):
-    logs_channel_id = db.get("logs_channel_id")
-    if not logs_channel_id:
+    """Événement appelé lorsque le bot détecte l'arrivée d'un nouveau membre.
+
+    Ajoute le rôle de newbie au membre.
+    Récupère les invitations du serveur.
+    Met à jour la liste des invitations.
+    Crée un message de bienvenue avec les informations sur l'invitation si trouvée.
+    Envoie le message de bienvenue dans le canal des logs.
+    Si le canal des logs n'est pas configuré, cet événement ne fait rien.
+    """
+    logsChannelId = db.get("logs_channel_id")
+    if not logsChannelId:
         return
 
     await member.add_roles(member.guild.get_role(db.get("newbie_role_id")))
 
     try:
         await hc.refresh_invites_message(member.guild, db)
-    except:
-        pass
+    except Exception as e:
+        await log.send_log_embed("Une erreur s'est produite lors de la mise à jour des invitations", dl.LogLevels.ERROR, e)
 
     await bot.change_presence(
         activity=discord.Activity(
@@ -185,22 +233,22 @@ async def on_member_join(member: discord.Member):
         )
     )
 
-    logs_channel = bot.get_channel(logs_channel_id)
-    if logs_channel:
+    logsChannel = bot.get_channel(logsChannelId)
+    if logsChannel:
         # Récupérer les invitations après l'arrivée du membre
-        invites_after = await member.guild.invites()
-        invites_after = {inv.code: inv for inv in invites_after}
+        invitesAfter = await member.guild.invites()
+        invitesAfter = {inv.code: inv for inv in invitesAfter}
 
         # Trouver quelle invitation a été utilisée
-        used_invite = None
-        for invite_after_code, invite_after in invites_after.items():
-            if invite_after_code in invites_before[member.guild.id] and invite_after.uses > invites_before[member.guild.id][invite_after_code].uses:
-                used_invite = invite_after
+        usedInvite = None
+        for inviteAfterCode, inviteAfter in invitesAfter.items():
+            if inviteAfterCode in invitesBefore[member.guild.id] and inviteAfter.uses > invitesBefore[member.guild.id][inviteAfterCode].uses:
+                usedInvite = inviteAfter
                 break
 
         # Mettre à jour la liste des invitations
-        invites_before[member.guild.id] = await member.guild.invites()
-        invites_before[member.guild.id] = {inv.code: inv for inv in invites_before[member.guild.id]}
+        invitesBefore[member.guild.id] = await member.guild.invites()
+        invitesBefore[member.guild.id] = {inv.code: inv for inv in invitesBefore[member.guild.id]}
 
         # Créer l'embed de base pour le nouveau membre
         embed = discord.Embed(
@@ -213,24 +261,30 @@ async def on_member_join(member: discord.Member):
         embed.add_field(name="Compte créé le", value=member.created_at.strftime("%d/%m/%Y à %H:%M"), inline=False)
 
         # Ajouter les informations sur l'invitation si trouvée
-        if used_invite:
-            embed.add_field(name="Invité par", value=used_invite.inviter.mention, inline=True)
-            embed.add_field(name="Code d'invitation", value=used_invite.code, inline=True)
-            embed.add_field(name="Utilisations", value=f"{used_invite.uses}/{used_invite.max_uses if used_invite.max_uses else '∞'}", inline=True)
+        if usedInvite:
+            embed.add_field(name="Invité par", value=usedInvite.inviter.mention, inline=True)
+            embed.add_field(name="Code d'invitation", value=usedInvite.code, inline=True)
+            embed.add_field(name="Utilisations", value=f"{usedInvite.uses}/{usedInvite.max_uses if usedInvite.max_uses else '∞'}", inline=True)
         else:
             embed.add_field(name="Invitation", value="Non trouvée", inline=True)
 
         embed.set_footer(text=f"ID: {member.id}")
-        await logs_channel.send(embed=embed)
+        await logsChannel.send(embed=embed)
 
 @bot.event
 async def on_member_remove(member: discord.Member):
-    logs_channel_id = db.get("logs_channel_id")
-    if not logs_channel_id:
+    """
+    Événement appelé lorsque le bot détecte le départ d'un membre.
+
+    Envoie un message dans le canal des logs avec les informations sur le membre parti.
+    Si le canal des logs n'est pas configuré, cet événement ne fait rien.
+    """
+    logsChannelId = db.get("logs_channel_id")
+    if not logsChannelId:
         return
 
-    logs_channel = bot.get_channel(logs_channel_id)
-    if logs_channel:
+    logsChannel = bot.get_channel(logsChannelId)
+    if logsChannel:
         embed = discord.Embed(
             title="Membre Parti",
             description=f"{member.display_name} a quitté le serveur",
@@ -240,21 +294,27 @@ async def on_member_remove(member: discord.Member):
         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
         embed.add_field(name="Avait rejoint le", value=member.joined_at.strftime("%d/%m/%Y à %H:%M"), inline=False)
         embed.set_footer(text=f"ID: {member.id}")
-        await logs_channel.send(embed=embed)
+        await logsChannel.send(embed=embed)
 
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
     # Vérifier si le nom a changé
+    """
+    Événement appelé lorsque le bot détecte un changement de pseudo d'un membre.
+
+    Si le pseudo a changé, le bot envoie un message dans le canal des logs avec les informations sur le membre et son changement de pseudo.
+    Si le canal des logs n'est pas configuré, cet événement ne fait rien.
+    """
     if before.display_name != after.display_name:
-        logs_channel_id = db.get("logs_channel_id")
-        if not logs_channel_id:
+        logsChannelId = db.get("logs_channel_id")
+        if not logsChannelId:
             return
 
-        logs_channel = bot.get_channel(logs_channel_id)
-        if logs_channel:
+        logsChannel = bot.get_channel(logsChannelId)
+        if logsChannel:
             embed = discord.Embed(
                 title="Changement de Pseudo",
-                description=f"Un membre a changé son pseudo",
+                description="Un membre a changé son pseudo",
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
@@ -263,12 +323,21 @@ async def on_member_update(before: discord.Member, after: discord.Member):
             embed.add_field(name="Nouveau pseudo", value=after.display_name, inline=True)
             embed.set_thumbnail(url=after.avatar.url if after.avatar else after.default_avatar.url)
             embed.set_footer(text=f"ID: {after.id}")
-            await logs_channel.send(embed=embed)
+            await logsChannel.send(embed=embed)
 
 @bot.event
 async def on_voice_state_update(
     member: discord.Member, before: discord.VoiceState, after: discord.VoiceState
 ):
+    """
+    Événement appelé lorsque le bot détecte un changement d'état vocal d'un membre.
+
+    Si le membre rejoint le channel vocal spécifique pour créer un channel vocal, le bot crée
+    un nouveau channel vocal avec le nom du membre et le déplace dedans ce nouveau channel.
+    Si le membre quitte un channel vocal créé par le bot et qu'il n'y a plus personne dedans ce
+    channel, le bot le supprime.
+    """
+
     if after.channel and after.channel.id == db.get("voc_create_channel_id"):
         createdVocal = await after.channel.category.create_voice_channel(f"{member.display_name}")
         tempVocalsChannelsId = db.get("temp_vocals_channel_id")
@@ -283,7 +352,16 @@ async def on_voice_state_update(
 
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
-    if 'custom_id' in interaction.data:
+    """
+    Événement appelé lorsque le bot détecte une interaction avec un bouton custom.
+
+    Si l'interaction est une commande de pari, le bot envoie un message pour demander à l'utilisateur de choisir la 1ère équipe, puis la 2e, puis la 3e.
+    Si l'interaction est un bouton de pari, le bot enregistre le pari et envoie un message pour demander à l'utilisateur de choisir le nom sous lequel le pari sera affiché.
+
+    Si l'interaction est un bouton d'affichage du nom du pari, le bot enregistre si le pari est anonyme ou non, et envoie un message pour confirmer le pari.
+    Si l'interaction est un bouton de placement de pari, le bot place le pari et envoie un message pour afficher le pari.
+    """
+    if "custom_id" in interaction.data.keys():
         if interaction.data['custom_id'] == "init_spectator":
             if interaction.guild.get_role(db.get("registered_role_id")) not in interaction.user.roles:
                 await interaction.user.add_roles(interaction.guild.get_role(db.get("spectator_role_id")))
@@ -316,7 +394,7 @@ async def on_interaction(interaction: discord.Interaction):
                 await userMentionned.add_roles(teamRole)
                 category = interaction.guild.get_channel(db.get("team_text_channels_category_id"))
                 adminRole = interaction.guild.get_role(db.get("admin_role_id"))
-                VARRole = interaction.guild.get_role(db.get("var_role_id"))
+                varRole = interaction.guild.get_role(db.get("var_role_id"))
 
                 overwritesText = {
                     interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -327,7 +405,7 @@ async def on_interaction(interaction: discord.Interaction):
                 overwritesVocal = {
                     interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
                     teamRole: discord.PermissionOverwrite(view_channel=True),
-                    VARRole: discord.PermissionOverwrite(view_channel=True),
+                    varRole: discord.PermissionOverwrite(view_channel=True),
                 }
                 if len(category.channels) == 50:
                     count = sum([1 for c in category.guild.categories if c.name.lower().startswith("salons d'équipes")])
@@ -338,13 +416,16 @@ async def on_interaction(interaction: discord.Interaction):
                 channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwritesText)
                 try:
                     await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! / You are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !", ephemeral=True)
-                except:
-                    pass
+                except Exception as e:
+                    await log.send_log_embed(f"Impossible d'envoyer la réponse de l'interaction {interaction.user.name} ({interaction.user.id}) et {userMentionned.name} ({userMentionned.id})", dl.LogLevels.ERROR, e)
                 try:
                     await interaction.user.send(f":tada: {interaction.user.mention} :tada:\n\nVous faites maintenant équipe avec {userMentionned.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! / You are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !")
-                except:
-                    pass
-                await userMentionned.send(f":tada: {userMentionned.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin. / You are now in a team with {interaction.user.mention} ! Go to the channel {channel.mention} to exchange with your mate ! If this is an error, please contact an admin.")
+                except Exception as e:
+                    await log.send_log_embed(f"Impossible d'envoyer le message d'équipe à {interaction.user.name} ({interaction.user.id}) et {userMentionned.name} ({userMentionned.id})", dl.LogLevels.ERROR, e)
+                try:
+                    await userMentionned.send(f":tada: {userMentionned.mention} :tada:\n\nVous faites maintenant équipe avec {interaction.user.mention} ! RDV dans le channel {channel.mention} pour échanger avec votre mate ! Si jamais c'est une erreur, merci de contacter un admin. / You are now in a team with {interaction.user.mention} ! Go to the channel {channel.mention} to exchange with your mate ! If this is an error, please contact an admin.")
+                except Exception as e:
+                    await log.send_log_embed(f"Impossible d'envoyer le message d'équipe à {userMentionned.name} ({userMentionned.id}) et {interaction.user.name} ({interaction.user.id})", dl.LogLevels.ERROR, e)
 
                 embed = discord.Embed(
                     title="Nouvelle équipe / New team",
@@ -393,13 +474,19 @@ async def on_interaction(interaction: discord.Interaction):
             bet2 = interaction.data['custom_id'].split('.')[3]
             bet3 = interaction.data['custom_id'].split('.')[4]
             anonymous = True if interaction.data['custom_id'].split('.')[1] == 'yes' else False
-            await interaction.response.edit_message(content=f"Parfait ! / Perfect !\n\nMerci pour votre pari, restez connecté pour avoir les résultats ! / Thank you for your bet, stay tuned to get the results !", view=None)
+            await interaction.response.edit_message(content="Parfait ! / Perfect !\n\nMerci pour votre pari, restez connecté pour avoir les résultats ! / Thank you for your bet, stay tuned to get the results !", view=None)
             messageToSend = f"{'Anonymous' if anonymous else interaction.user.mention} a placé un pari / has placed a bet : \n\n- :first_place: : {bet1}\n- :second_place: : {bet2}\n- :third_place: : {bet3}\n\nVotez vous aussi en utilisant la commande `/bet` ! / Place your own bet using the `/bet` command !"
             await hc.place_bet(interaction.user.id, bet1, bet2, bet3, anonymous, interaction.user.display_name)
             await interaction.guild.get_channel(db.get("bets_channel_id")).send(messageToSend)
 
 @bot.tree.command(name='team', description="Créer votre équipe !/Create your team !")
 async def team(interaction: discord.Interaction):
+    """
+    Créer votre équipe !/Create your team !
+
+    Si vous êtes deja inscrit en tant que joueur, vous ne pouvez pas utiliser cette commande.
+    Si vous êtes inscrit en tant que spectateur, vous ne pouvez pas utiliser cette commande, si vous voulez jouer, rdv dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !
+    """
     if interaction.user in interaction.guild.get_role(db.get("player_role_id")).members:
         await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nVous avez deja une equipe ! / You already have a team !", ephemeral=True)
     elif interaction.user in interaction.guild.get_role(db.get("spectator_role_id")).members:
@@ -412,14 +499,20 @@ async def team(interaction: discord.Interaction):
 
 @bot.tree.command(name='bet', description="Pari sur le podium de la Hellcup / Bet on the Hellcup's podium")
 async def bet(interaction: discord.Interaction):
+    """
+    Pari sur le podium de la Hellcup.
+
+    Si vous avez déjà parié pour cette édition, vous ne pouvez pas utiliser cette commande.
+    Sinon, vous pouvez choisir l'une des équipes qualifiées pour cette édition en cliquant sur le bouton correspondant.
+    """
     await interaction.response.defer(ephemeral=True)
     if interaction.user.id in await hc.get_bets_discordIds():
         await interaction.followup.send(":x: Vous avez déjà parié pour cette édition. / You have already bet for this edition.", ephemeral=True)
     else:
         teamsList = await hc.get_qualified_teams()
         view = discord.ui.View()
-        for team in teamsList:
-            view.add_item(discord.ui.Button(label=team, custom_id=f"bet1.{team}", style=discord.ButtonStyle.primary))
+        for teamTemp in teamsList:
+            view.add_item(discord.ui.Button(label=teamTemp, custom_id=f"bet1.{teamTemp}", style=discord.ButtonStyle.primary))
         await interaction.followup.send("Quelle équipe va remporter cette Hellcup d'après vous ? / Which team will win this Hellcup ?", view=view, ephemeral=True)
 
 
@@ -427,6 +520,21 @@ async def bet(interaction: discord.Interaction):
 @bot.event
 async def on_message(message: discord.Message):
     # Ignorer les messages du bot
+    """
+    Ignorer les messages du bot.
+
+    Si l'utilisateur a la permission d'administrateur, il peut utiliser certaines commandes spéciales.
+    La commande $sync synchronise les commandes du bot avec le serveur Discord.
+    La commande $send <message> envoie le message <message> sur le channel actuel.
+    La commande $stop_inscription désactive le bouton d'inscription.
+    La commande $start_inscription réactive le bouton d'inscription.
+    La commande $add_invite <link> <name> ajoute l'invitation <link> au dictionnaire des invitations avec le nom <name>.
+    La commande $refresh_invites_message met à jour le message des invitations.
+    La commande $test vérifie si le serveur a plus de 48 catégories de salons d'équipes et créé une nouvelle si c'est le cas.
+    La commande $initmessagebienvenue envoie un message de bienvenue sur le serveur avec un embed et deux boutons pour s'inscrire en tant que joueur ou spectateur.
+
+    """
+
     if message.author.bot:
         return
 
@@ -438,20 +546,20 @@ async def on_message(message: discord.Message):
         # Vérifier si c'est la commande $sync
         if message.content == "$sync":
             # Vérifier si l'auteur est un administrateur
-                try:
-                    await message.delete()  # Supprimer la commande $sync
-                    sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
-                    syncRet = await bot.tree.sync()
-                    await sync_message.edit(content="✅ Commandes synchronisées avec succès! " + str(syncRet), delete_after=5)
-                except Exception as e:
-                    await sync_message.edit(f"❌ Erreur lors de la synchronisation: {str(e)}")
+            try:
+                await message.delete()  # Supprimer la commande $sync
+                sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
+                syncRet = await bot.tree.sync()
+                await sync_message.edit(content="✅ Commandes synchronisées avec succès! " + str(syncRet), delete_after=5)
+            except Exception as e:
+                await sync_message.edit(content=f"❌ Erreur lors de la synchronisation: {str(e)}")
 
         elif message.content.startswith("$send"):
             try:
-                message_content = message.content.split("$send ", 1)[1]
-                await message.channel.send(message_content)
+                messageContent = message.content.split("$send ", 1)[1]
+                await message.channel.send(messageContent)
             except Exception as e:
-                pass
+                await log.send_log_embed("Impossible d'envoyer le message", dl.LogLevels.ERROR, e)
             await message.delete()
 
         elif message.content == "$stop_inscription":
@@ -496,7 +604,7 @@ async def on_message(message: discord.Message):
             view.add_item(spectator)
             e = discord.Embed(title="Bienvenue sur le serveur ! :wave:", color=discord.Color.green())
             e.add_field(name="Que venez vous faire sur le serveur ? / What are you doing on the server ?", value="Si vous venez pour vous battre, cliquez sur le bouton \"Joueur !\", si vous venez pour observer le tournoi, cliquez sur le bouton \"Spectateur !\". / If you are here to play, click on the \"Player !\" button, if you are here to spectate the tournament, click on the \"Spectator !\" button.", inline=False)
-            e.set_footer(text=f"©HellBot")
+            e.set_footer(text="©HellBot")
             await message.guild.get_channel(db.get('rules_channel_id')).send(embed=e, view=view)
             db.modify("signup_message_id", message.id)
 
