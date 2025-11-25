@@ -14,8 +14,8 @@ class RegisterModal(ui.Modal):
         super().__init__(title="Inscription")
 
         surname = ui.TextInput(
-            label="Pseudo / Surname",
-            placeholder="Votre pseudo / Your surname",
+            label="Surname",
+            placeholder="Your surname",
             style=discord.TextStyle.short,
             min_length=2,
             max_length=32,
@@ -44,7 +44,7 @@ class RegisterModal(ui.Modal):
         }
         if not (await hc.is_geoguessr_id_correct(member["geoguessrId"])):
             await interaction.followup.send(
-                f":warning: {interaction.user.mention} :warning:\n\nLe lien de votre profil Geoguessr semble incorrect, pour le trouver, il faut aller sur https://www.geoguessr.com/me/profile et tout en bas vous avez le lien sous la forme https://www.geoguessr.com/user/xxx). Si vous pensez que c'est une erreur, merci de contacter un admin ! / The link to your Geoguessr profile seems to be incorrect. To find it, go to https://www.geoguessr.com/me/profile and at the very bottom you'll find the link in the form https://www.geoguessr.com/user/xxx.) If you think this is a mistake, please contact an admin!",
+                f":warning: {interaction.user.mention} :warning:\n\nThe link to your Geoguessr profile seems to be incorrect. To find it, go to https://www.geoguessr.com/me/profile and click on your profile picture) If you think this is a mistake, please contact an admin!",
                 ephemeral=True,
             )
         else:
@@ -53,12 +53,12 @@ class RegisterModal(ui.Modal):
             await interaction.user.remove_roles(interaction.guild.get_role(db.get("spectator_role_id")))
             await interaction.user.remove_roles(interaction.guild.get_role(db.get("newbie_role_id")))
             await interaction.followup.send(
-                f":tada: Bienvenue dans le tournoi {interaction.user.mention} ! :tada:\n\nVous êtes bien inscrit en tant que joueur, pensez maintenant à créer votre équipe avec la commande `/team` dans n'importe quel channel textuel. / You are now registered as a player, please create your team with the `/team` command in any text channel.",
+                f":tada: Welcome on board {interaction.user.mention} ! :tada:\n\nYou are now registered as a player, please create your team with the `/team` command in any text channel.",
                 ephemeral=True,
             )
             embed = discord.Embed(
                 title="Nouvelle inscription",
-                description=f"{interaction.user.mention} est maintenant inscrit(e) avec le surnom **{member['surname']}**!",
+                description=f"{interaction.user.mention} is now registered as a player : **{member['surname']}**!",
                 color=discord.Color.green(),
                 timestamp=datetime.now(),
             )
@@ -66,5 +66,5 @@ class RegisterModal(ui.Modal):
                 url=interaction.user.avatar.url if interaction.user.avatar else interaction.user.default_avatar.url
             )
             embed.add_field(name="ID Geoguessr", value=member["geoguessrId"], inline=True)
-            embed.add_field(name="Date d'inscription", value=datetime.now().strftime("%d/%m/%Y à %H:%M"), inline=True)
+            embed.add_field(name="Inscription date", value=datetime.now().strftime("%d/%m/%Y à %H:%M"), inline=True)
             await interaction.guild.get_channel(db.get("registration_channel_id")).send(embed=embed)
