@@ -2,7 +2,7 @@ import aiohttp
 import discord
 
 import gspread_utilities as gu
-from DB import DB
+from db import DB
 
 
 async def is_geoguessr_id_correct(geoguessr_id: str):
@@ -44,7 +44,7 @@ async def get_qualified_teams():
 
 
 async def get_bets_discordIds():
-    return await gu.get_bets_discordIds()
+    return await gu.get_bets_discord_ids()
 
 
 async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str):
