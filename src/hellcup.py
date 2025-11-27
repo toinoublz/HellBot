@@ -2,8 +2,7 @@ import aiohttp
 import discord
 
 import gspread_utilities as gu
-from db import DB
-
+from easyDB import DB
 
 async def is_geoguessr_id_correct(geoguessr_id: str):
     async with aiohttp.ClientSession() as session:

@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-import db
+from easyDB import DB
 import discord_logs as dl
 import hellcup as hc
 import modals as md
@@ -20,7 +20,7 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 
-database = db.DB("hellbot")
+database = DB("hellbot")
 
 log = dl.DiscordLog(database.get("logs_channel_id"))
 # Variable globale pour stocker les invitations
