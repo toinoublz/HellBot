@@ -11,6 +11,13 @@ db = DB("hellbot")
 
 class RegisterModal(ui.Modal):
     def __init__(self):
+        """
+        Initializes the RegisterModal instance.
+
+        It sets the title of the modal to "Inscription" and adds two text inputs to the modal.
+        The first input is labeled "Surname" and is used to enter the user's surname.
+        The second input is labeled "Geoguessr ID" and is used to enter the user's Geoguessr ID.
+        """
         super().__init__(title="Inscription")
 
         surname = ui.TextInput(
@@ -42,7 +49,7 @@ class RegisterModal(ui.Modal):
                 geoguessrLink if "www.geoguessr.com/user" not in geoguessrLink else geoguessrLink.split("/")[-1]
             ),
         }
-        if not (await hc.is_geoguessr_id_correct(member["geoguessrId"])):
+        if not await hc.is_geoguessr_id_correct(member["geoguessrId"]):
             await interaction.followup.send(
                 f":warning: {interaction.user.mention} :warning:\n\nThe link to your Geoguessr profile seems to be incorrect. To find it, go to https://www.geoguessr.com/me/profile and click on your profile picture) If you think this is a mistake, please contact an admin!",
                 ephemeral=True,

@@ -514,7 +514,7 @@ async def bet(interaction: discord.Interaction):
     Sinon, vous pouvez choisir l'une des équipes qualifiées pour cette édition en cliquant sur le bouton correspondant.
     """
     await interaction.response.defer(ephemeral=True)
-    if interaction.user.id in await hc.get_bets_discordIds():
+    if interaction.user.id in await hc.get_bets_discord_ids():
         await interaction.followup.send(":x: You have already bet for this edition.", ephemeral=True)
     else:
         teamsList = await hc.get_qualified_teams()
