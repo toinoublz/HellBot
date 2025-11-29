@@ -1,8 +1,9 @@
 import aiohttp
 import discord
+from easyDB import DB
 
 import gspread_utilities as gu
-from easyDB import DB
+
 
 async def is_geoguessr_id_correct(geoguessr_id: str):
     async with aiohttp.ClientSession() as session:
@@ -18,9 +19,11 @@ async def inscription(member: dict):
     return
 
 
-async def create_team(member1: discord.Member, member2: discord.Member):
+async def create_team(
+    member1: discord.Member, member2: discord.Member, firstMode: str, secondMode: str, thirdMode: str
+) -> dict[str, str]:
     ### Let's find them in the gsheet list of registered players
-    return await gu.gspread_new_team(member1, member2)
+    return await gu.gspread_new_team(member1, member2, firstMode, secondMode, thirdMode)
 
 
 async def refresh_invites_message(guild: discord.Guild, db: DB):
@@ -48,3 +51,18 @@ async def get_bets_discordIds():
 
 async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str):
     await gu.place_bet(discordId, bet1, bet2, bet3, isAnonymous, discordName)
+
+
+async def get_player_datas(geoguessrId: str) -> dict:
+    """
+    Retrieves data about a player from the GeoGuessr API.
+
+    Args:
+        geoguessrId (str): The GeoGuessr ID of the player.
+
+    Returns:
+        dict: A dictionary containing the player's data.
+    """
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://www.geoguessr.com/api/v3/users/{geoguessrId}") as r:
+            return await r.json()

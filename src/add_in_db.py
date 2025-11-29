@@ -1,4 +1,4 @@
-from db import DB
+from easyDB import DB
 
 database = DB("hellbot", verbose=False)
 

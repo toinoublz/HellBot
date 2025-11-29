@@ -1,3 +1,5 @@
+import os
+
 import discord
 import gspread_asyncio
 from google.oauth2.service_account import Credentials
@@ -24,7 +26,7 @@ def get_creds():
 
     These scopes are required for the gspread_asyncio library to work.
     """
-    creds = Credentials.from_service_account_file("creds.json")
+    creds = Credentials.from_service_account_file(os.path.join(os.path.dirname(__file__), "..", "json", "creds.json"))
     scoped = creds.with_scopes(
         [
             "https://spreadsheets.google.com/feeds",
@@ -78,7 +80,9 @@ async def gspread_new_registration(member: dict):
     return
 
 
-async def gspread_new_team(member1: discord.Member, member2: discord.Member):
+async def gspread_new_team(
+    member1: discord.Member, member2: discord.Member, firstMode: str, secondMode: str, thirdMode: str
+) -> dict[str, str]:
     """
     Adds a new team to the Google Sheets document.
 
@@ -104,7 +108,7 @@ async def gspread_new_team(member1: discord.Member, member2: discord.Member):
     :rtype: List[str]
     """
     clientg = await connect_gsheet_api()
-    spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
+    spreadsheet = await clientg.open("[ORGA] Hell Cup S2 Inscriptions")
     worksheet = await spreadsheet.worksheet("Inscrits")
     lines = await worksheet.get_all_records()
     player1Updated = player2Updated = False
@@ -123,19 +127,22 @@ async def gspread_new_team(member1: discord.Member, member2: discord.Member):
         if player1Updated and player2Updated:
             break
     worksheet = await spreadsheet.worksheet("Teams")
-    await worksheet.append_row(
-        [
-            team["member1_discordId"],
-            team["member1_geoguessrId"],
-            team["member2_discordId"],
-            team["member2_geoguessrId"],
-            team["member1_surname"],
-            team["member2_surname"],
-            team["member1_surname"] + "_" + team["member2_surname"],
-        ]
-    )
+    outputDict = {
+        "member1_discordId": team["member1_discordId"],
+        "member1_geoguessrId": team["member1_geoguessrId"],
+        "member2_discordId": team["member2_discordId"],
+        "member2_geoguessrId": team["member2_geoguessrId"],
+        "member1_surname": team["member1_surname"],
+        "member2_surname": team["member2_surname"],
+        "team_name": team["member1_surname"] + "_" + team["member2_surname"],
+        "firstMode": firstMode,
+        "secondMode": secondMode,
+        "thirdMode": thirdMode,
+    }
 
-    return [team["member1_surname"], team["member2_surname"]]
+    await worksheet.append_row(list(outputDict.values()))
+
+    return outputDict
 
 
 async def get_qualified_teams_names():

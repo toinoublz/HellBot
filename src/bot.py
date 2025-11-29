@@ -5,8 +5,8 @@ from datetime import datetime
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-
 from easyDB import DB
+
 import discord_logs as dl
 import hellcup as hc
 import layoutViews as lv
@@ -14,7 +14,7 @@ import modals as md
 
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 # Créer une instance du bot avec le préfixe '!'
 intents = discord.Intents.all()
@@ -27,6 +27,7 @@ log = dl.DiscordLog(database.get("logs_channel_id"))
 # Variable globale pour stocker les invitations
 invitesBefore = {}
 
+
 @bot.event
 async def on_ready():
     """
@@ -38,7 +39,7 @@ async def on_ready():
     Lorsque cet événement est appelé, le bot charge les invitations existantes pour chaque serveur,
     puis change son statut pour afficher le nombre de membres du serveur HellCup.
     """
-    print(f'{bot.user} est connecté à Discord!')
+    print(f"{bot.user} est connecté à Discord!")
     log.add_guild(bot.get_guild(database.get("server_id")))
     # Charger les invitations existantes pour chaque serveur
     for guild in bot.guilds:
@@ -53,7 +54,8 @@ async def on_ready():
         )
     )
 
-async def log_error(error: Exception, ctx = None):
+
+async def log_error(error: Exception, ctx=None):
     """Envoie les erreurs dans le canal des super logs"""
     logsChannelId = database.get("logs_channel_id")
     if not logsChannelId:
@@ -68,7 +70,7 @@ async def log_error(error: Exception, ctx = None):
         title="⚠️ Erreur Détectée",
         description="Une erreur s'est produite lors de l'exécution du bot",
         color=discord.Color.red(),
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
 
     # Ajouter les détails de l'erreur
@@ -86,10 +88,11 @@ async def log_error(error: Exception, ctx = None):
         embed.add_field(
             name="Contexte",
             value=f"Commande: {ctx.command}\nAuteur: {ctx.author}\nCanal: {ctx.channel}\nMessage: {ctx.message.content}",
-            inline=False
+            inline=False,
         )
 
     await channel.send(embed=embed)
+
 
 @bot.event
 async def on_error(event):
@@ -97,10 +100,12 @@ async def on_error(event):
     error = traceback.format_exc()
     await log_error(Exception(f"Erreur dans l'événement {event}:\n{error}"))
 
+
 @bot.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):
     """Capture les erreurs de commandes"""
     await log_error(error, ctx)
+
 
 @bot.event
 async def on_invite_create(invite: discord.Invite):
@@ -115,11 +120,7 @@ async def on_invite_create(invite: discord.Invite):
 
     logsChannel = bot.get_channel(logsChannelId)
     if logsChannel:
-        embed = discord.Embed(
-            title="Nouvelle Invitation Créée",
-            color=discord.Color.blue(),
-            timestamp=datetime.now()
-        )
+        embed = discord.Embed(title="Nouvelle Invitation Créée", color=discord.Color.blue(), timestamp=datetime.now())
         embed.add_field(name="Créée par", value=invite.inviter.mention, inline=True)
         embed.add_field(name="Code", value=invite.code, inline=True)
         embed.add_field(name="Channel", value=invite.channel.mention, inline=True)
@@ -131,6 +132,7 @@ async def on_invite_create(invite: discord.Invite):
         await logsChannel.send(embed=embed)
     invitesBefore[invite.guild.id] = await invite.guild.invites()
     invitesBefore[invite.guild.id] = {inv.code: inv for inv in invitesBefore[invite.guild.id]}
+
 
 @bot.event
 async def on_message_delete(message: discord.Message):
@@ -157,12 +159,13 @@ async def on_message_delete(message: discord.Message):
             title="Message Supprimé",
             description=f"Un message a été supprimé dans {message.channel.mention}",
             color=discord.Color.red(),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
         embed.add_field(name="Auteur", value=message.author.mention, inline=False)
         embed.add_field(name="Contenu", value=message.content or "Contenu non disponible", inline=False)
         embed.set_footer(text=f"ID: {message.author.id}")
         await logsChannel.send(embed=embed)
+
 
 @bot.event
 async def on_message_edit(before: discord.Message, after: discord.Message):
@@ -196,7 +199,7 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
             title="Message Modifié",
             description=f"Un message a été modifié dans {before.channel.mention}",
             color=discord.Color.blue(),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
         embed.add_field(name="Auteur", value=before.author.mention, inline=False)
         embed.add_field(name="Avant", value=before.content or "Contenu non disponible", inline=False)
@@ -204,6 +207,7 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
         embed.add_field(name="Lien", value=f"[Aller au message]({after.jump_url})", inline=False)
         embed.set_footer(text=f"ID: {before.author.id}")
         await logsChannel.send(embed=embed)
+
 
 @bot.event
 async def on_member_join(member: discord.Member):
@@ -225,7 +229,9 @@ async def on_member_join(member: discord.Member):
     try:
         await hc.refresh_invites_message(member.guild, database)
     except Exception as e:
-        await log.send_log_embed("Une erreur s'est produite lors de la mise à jour des invitations", dl.LogLevels.ERROR, e)
+        await log.send_log_embed(
+            "Une erreur s'est produite lors de la mise à jour des invitations", dl.LogLevels.ERROR, e
+        )
 
     await bot.change_presence(
         activity=discord.Activity(
@@ -243,7 +249,10 @@ async def on_member_join(member: discord.Member):
         # Trouver quelle invitation a été utilisée
         usedInvite = None
         for inviteAfterCode, inviteAfter in invitesAfter.items():
-            if inviteAfterCode in invitesBefore[member.guild.id] and inviteAfter.uses > invitesBefore[member.guild.id][inviteAfterCode].uses:
+            if (
+                inviteAfterCode in invitesBefore[member.guild.id]
+                and inviteAfter.uses > invitesBefore[member.guild.id][inviteAfterCode].uses
+            ):
                 usedInvite = inviteAfter
                 break
 
@@ -256,7 +265,7 @@ async def on_member_join(member: discord.Member):
             title="Nouveau Membre",
             description=f"{member.mention} a rejoint le serveur!",
             color=discord.Color.green(),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
         embed.add_field(name="Compte créé le", value=member.created_at.strftime("%d/%m/%Y à %H:%M"), inline=False)
@@ -265,12 +274,17 @@ async def on_member_join(member: discord.Member):
         if usedInvite:
             embed.add_field(name="Invité par", value=usedInvite.inviter.mention, inline=True)
             embed.add_field(name="Code d'invitation", value=usedInvite.code, inline=True)
-            embed.add_field(name="Utilisations", value=f"{usedInvite.uses}/{usedInvite.max_uses if usedInvite.max_uses else '∞'}", inline=True)
+            embed.add_field(
+                name="Utilisations",
+                value=f"{usedInvite.uses}/{usedInvite.max_uses if usedInvite.max_uses else '∞'}",
+                inline=True,
+            )
         else:
             embed.add_field(name="Invitation", value="Non trouvée", inline=True)
 
         embed.set_footer(text=f"ID: {member.id}")
         await logsChannel.send(embed=embed)
+
 
 @bot.event
 async def on_member_remove(member: discord.Member):
@@ -290,12 +304,13 @@ async def on_member_remove(member: discord.Member):
             title="Membre Parti",
             description=f"{member.display_name} a quitté le serveur",
             color=discord.Color.red(),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
         embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
         embed.add_field(name="Avait rejoint le", value=member.joined_at.strftime("%d/%m/%Y à %H:%M"), inline=False)
         embed.set_footer(text=f"ID: {member.id}")
         await logsChannel.send(embed=embed)
+
 
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
@@ -317,7 +332,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
                 title="Changement de Pseudo",
                 description="Un membre a changé son pseudo",
                 color=discord.Color.blue(),
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
             embed.add_field(name="Membre", value=after.mention, inline=False)
             embed.add_field(name="Ancien pseudo", value=before.display_name, inline=True)
@@ -326,10 +341,9 @@ async def on_member_update(before: discord.Member, after: discord.Member):
             embed.set_footer(text=f"ID: {after.id}")
             await logsChannel.send(embed=embed)
 
+
 @bot.event
-async def on_voice_state_update(
-    member: discord.Member, before: discord.VoiceState, after: discord.VoiceState
-):
+async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
     """
     Événement appelé lorsque le bot détecte un changement d'état vocal d'un membre.
 
@@ -343,13 +357,18 @@ async def on_voice_state_update(
         createdVocal = await after.channel.category.create_voice_channel(f"{member.display_name}")
         tempVocalsChannelsId = database.get("temp_vocals_channel_id")
         tempVocalsChannelsId.append(createdVocal.id)
-        database.modify('temp_vocals_channel_id', tempVocalsChannelsId)
+        database.modify("temp_vocals_channel_id", tempVocalsChannelsId)
         await member.move_to(createdVocal)
-    if before.channel and before.channel.id in database.get("temp_vocals_channel_id") and len(before.channel.members) == 0:
+    if (
+        before.channel
+        and before.channel.id in database.get("temp_vocals_channel_id")
+        and len(before.channel.members) == 0
+    ):
         tempVocalsChannelsId = database.get("temp_vocals_channel_id")
         tempVocalsChannelsId.remove(before.channel.id)
-        database.modify('temp_vocals_channel_id', tempVocalsChannelsId)
+        database.modify("temp_vocals_channel_id", tempVocalsChannelsId)
         await before.channel.delete()
+
 
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
@@ -363,119 +382,98 @@ async def on_interaction(interaction: discord.Interaction):
     Si l'interaction est un bouton de placement de pari, le bot place le pari et envoie un message pour afficher le pari.
     """
     if "custom_id" in interaction.data.keys():
-        if interaction.data['custom_id'] == "init_spectator":
+        if interaction.data["custom_id"] == "init_spectator":
             if interaction.guild.get_role(database.get("registered_role_id")) not in interaction.user.roles:
                 await interaction.user.add_roles(interaction.guild.get_role(database.get("spectator_role_id")))
                 await interaction.user.remove_roles(interaction.guild.get_role(database.get("newbie_role_id")))
-                await interaction.response.send_message(":popcorn: Prepare your popcorns, you are now a spectator of the tournament !", ephemeral=True)
+                await interaction.response.send_message(
+                    ":popcorn: Prepare your popcorns, you are now a spectator of the tournament !", ephemeral=True
+                )
             else:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nYou are already registered, if you want to modify your registration, please contact an admin.", ephemeral=True)
-        elif interaction.data['custom_id'] == "init_player":
+                await interaction.response.send_message(
+                    f":warning: {interaction.user.mention} :warning:\n\nYou are already registered, if you want to modify your registration, please contact an admin.",
+                    ephemeral=True,
+                )
+        elif interaction.data["custom_id"] == "init_player":
             if interaction.guild.get_role(database.get("registered_role_id")) in interaction.user.roles:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nYou are already registered, if you want to modify your registration, please contact an admin.", ephemeral=True)
+                await interaction.response.send_message(
+                    f":warning: {interaction.user.mention} :warning:\n\nYou are already registered, if you want to modify your registration, please contact an admin.",
+                    ephemeral=True,
+                )
             else:
                 await interaction.response.send_modal(md.RegisterModal())
-        elif interaction.data['custom_id'] == "team_select":
-            userMentionned = interaction.guild.get_member(int(interaction.data['values'][0]))
-            if userMentionned == interaction.user:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nYou can't make a team with yourself !", ephemeral=True)
-            if userMentionned in interaction.guild.get_role(database.get("player_role_id")).members:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nThe selected player already has a team, if you think this is an error, please see with an admin.", ephemeral=True)
-            elif userMentionned in interaction.guild.get_role(database.get("spectator_role_id")).members:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nThe selected player is registered as a spectator, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(database.get('rules_channel_id')).mention} !", ephemeral=True)
-            elif userMentionned not in interaction.guild.get_role(database.get("registered_role_id")).members:
-                await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nThe selected player is not yet registered, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(database.get('rules_channel_id')).mention} !", ephemeral=True)
-            else:
-                await interaction.response.defer()
-                nicknames = await hc.create_team(interaction.user, userMentionned)
-                await interaction.user.add_roles(interaction.guild.get_role(database.get("player_role_id")))
-                await userMentionned.add_roles(interaction.guild.get_role(database.get("player_role_id")))
-                teamRole = await interaction.guild.create_role(name='_'.join(nicknames))
-                await interaction.user.add_roles(teamRole)
-                await userMentionned.add_roles(teamRole)
-                category = interaction.guild.get_channel(database.get("team_text_channels_category_id"))
-                adminRole = interaction.guild.get_role(database.get("admin_role_id"))
-                varRole = interaction.guild.get_role(database.get("var_role_id"))
-
-                overwritesText = {
-                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                    teamRole: discord.PermissionOverwrite(view_channel=True),
-                    adminRole: discord.PermissionOverwrite(view_channel=True),
-                }
-
-                overwritesVocal = {
-                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                    teamRole: discord.PermissionOverwrite(view_channel=True),
-                    varRole: discord.PermissionOverwrite(view_channel=True),
-                }
-                if len(category.channels) == 50:
-                    count = sum([1 for c in category.guild.categories if c.name.lower().startswith("salons d'équipes")])
-                    newCategory = await interaction.guild.create_category_channel(f"Salons d'équipes {count + 1}")
-                    database.modify("team_text_channels_category_id", newCategory.id)
-                    category = newCategory
-                await category.create_voice_channel(f"team-{teamRole.name}", overwrites=overwritesVocal)
-                channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwritesText)
-                try:
-                    await interaction.followup.send(f":tada: {interaction.user.mention} :tada:\n\nYou are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !", ephemeral=True)
-                except Exception as e:
-                    await log.send_log_embed(f"Impossible d'envoyer la réponse de l'interaction {interaction.user.name} ({interaction.user.id}) et {userMentionned.name} ({userMentionned.id})", dl.LogLevels.ERROR, e)
-                try:
-                    await interaction.user.send(f":tada: {interaction.user.mention} :tada:\n\nYou are now in a team with {userMentionned.mention} ! Go to the channel {channel.mention} to exchange with your mate !")
-                except Exception as e:
-                    await log.send_log_embed(f"Impossible d'envoyer le message d'équipe à {interaction.user.name} ({interaction.user.id}) et {userMentionned.name} ({userMentionned.id})", dl.LogLevels.ERROR, e)
-                try:
-                    await userMentionned.send(f":tada: {userMentionned.mention} :tada:\n\nYou are now in a team with {interaction.user.mention} ! Go to the channel {channel.mention} to exchange with your mate ! If this is an error, please contact an admin.")
-                except Exception as e:
-                    await log.send_log_embed(f"Impossible d'envoyer le message d'équipe à {userMentionned.name} ({userMentionned.id}) et {interaction.user.name} ({interaction.user.id})", dl.LogLevels.ERROR, e)
-
-                embed = discord.Embed(
-                    title="New team",
-                    description=f"A new team has appeared : {nicknames[0]} ({interaction.user.mention}) & {nicknames[1]} ({userMentionned.mention})",
-                    color=discord.Color.green(),
-                    timestamp=datetime.now()
-                )
-                await interaction.guild.get_channel(database.get("registration_channel_id")).send(embed=embed)
-                await interaction.guild.get_channel(database.get("new_team_channel_id")).send(embed=embed)
-        elif 'bet1' in interaction.data['custom_id']:
-            bet1 = interaction.data['custom_id'].split('.')[1]
+        elif "bet1" in interaction.data["custom_id"]:
+            bet1 = interaction.data["custom_id"].split(".")[1]
             buttons = []
             for component in interaction.message.components:
                 buttons.extend([child for child in component.children])
             view = discord.ui.View()
             for button in buttons:
                 if button.label == bet1:
-                    view.add_item(discord.ui.Button(label=button.label + " (1st)", style=discord.ButtonStyle.green, disabled=True))
+                    view.add_item(
+                        discord.ui.Button(label=button.label + " (1st)", style=discord.ButtonStyle.green, disabled=True)
+                    )
                 else:
-                    view.add_item(discord.ui.Button(label=button.label, custom_id=f"bet2.{bet1}.{button.label}", style=button.style, disabled=True if button.style == discord.ButtonStyle.green else False))
-            await interaction.response.edit_message(content="Which team will finish 2nd of this Hellcup ?",view=view)
-        elif 'bet2' in interaction.data['custom_id']:
-            bet1 = interaction.data['custom_id'].split('.')[1]
-            bet2 = interaction.data['custom_id'].split('.')[2]
+                    view.add_item(
+                        discord.ui.Button(
+                            label=button.label,
+                            custom_id=f"bet2.{bet1}.{button.label}",
+                            style=button.style,
+                            disabled=True if button.style == discord.ButtonStyle.green else False,
+                        )
+                    )
+            await interaction.response.edit_message(content="Which team will finish 2nd of this Hellcup ?", view=view)
+        elif "bet2" in interaction.data["custom_id"]:
+            bet1 = interaction.data["custom_id"].split(".")[1]
+            bet2 = interaction.data["custom_id"].split(".")[2]
             buttons = []
             for component in interaction.message.components:
                 buttons.extend([child for child in component.children])
             view = discord.ui.View()
             for button in buttons:
                 if button.label == bet2:
-                    view.add_item(discord.ui.Button(label=button.label + " (2nd)", style=discord.ButtonStyle.green, disabled=True))
+                    view.add_item(
+                        discord.ui.Button(label=button.label + " (2nd)", style=discord.ButtonStyle.green, disabled=True)
+                    )
                 else:
-                    view.add_item(discord.ui.Button(label=button.label, custom_id=f"bet3.{bet1}.{bet2}.{button.label}", style=button.style, disabled=True if button.style == discord.ButtonStyle.green else False))
-            await interaction.response.edit_message(content="Which team will finish 3rd of this Hellcup ?",view=view)
-        elif 'bet3' in interaction.data['custom_id']:
-            bet1 = interaction.data['custom_id'].split('.')[1]
-            bet2 = interaction.data['custom_id'].split('.')[2]
-            bet3 = interaction.data['custom_id'].split('.')[3]
+                    view.add_item(
+                        discord.ui.Button(
+                            label=button.label,
+                            custom_id=f"bet3.{bet1}.{bet2}.{button.label}",
+                            style=button.style,
+                            disabled=True if button.style == discord.ButtonStyle.green else False,
+                        )
+                    )
+            await interaction.response.edit_message(content="Which team will finish 3rd of this Hellcup ?", view=view)
+        elif "bet3" in interaction.data["custom_id"]:
+            bet1 = interaction.data["custom_id"].split(".")[1]
+            bet2 = interaction.data["custom_id"].split(".")[2]
+            bet3 = interaction.data["custom_id"].split(".")[3]
             betsMessage = f"Here's the recap of your bets !\n\n- :first_place: : {bet1}\n- :second_place: : {bet2}\n- :third_place: : {bet3}\n\nUnder what name do you want the bet to be displayed ?\n"
             view = discord.ui.View()
-            view.add_item(discord.ui.Button(label=interaction.user.display_name, custom_id=f"anonymous.no.{bet1}.{bet2}.{bet3}", style=discord.ButtonStyle.primary))
-            view.add_item(discord.ui.Button(label="Anonymous", custom_id=f"anonymous.yes.{bet1}.{bet2}.{bet3}", style=discord.ButtonStyle.primary))
+            view.add_item(
+                discord.ui.Button(
+                    label=interaction.user.display_name,
+                    custom_id=f"anonymous.no.{bet1}.{bet2}.{bet3}",
+                    style=discord.ButtonStyle.primary,
+                )
+            )
+            view.add_item(
+                discord.ui.Button(
+                    label="Anonymous",
+                    custom_id=f"anonymous.yes.{bet1}.{bet2}.{bet3}",
+                    style=discord.ButtonStyle.primary,
+                )
+            )
             await interaction.response.edit_message(content=betsMessage, view=view)
-        elif 'anonymous' in interaction.data['custom_id']:
-            bet1 = interaction.data['custom_id'].split('.')[2]
-            bet2 = interaction.data['custom_id'].split('.')[3]
-            bet3 = interaction.data['custom_id'].split('.')[4]
-            anonymous = True if interaction.data['custom_id'].split('.')[1] == 'yes' else False
-            await interaction.response.edit_message(content="Perfect !\n\nThank you for your bet, stay tuned to get the results !", view=None)
+        elif "anonymous" in interaction.data["custom_id"]:
+            bet1 = interaction.data["custom_id"].split(".")[2]
+            bet2 = interaction.data["custom_id"].split(".")[3]
+            bet3 = interaction.data["custom_id"].split(".")[4]
+            anonymous = True if interaction.data["custom_id"].split(".")[1] == "yes" else False
+            await interaction.response.edit_message(
+                content="Perfect !\n\nThank you for your bet, stay tuned to get the results !", view=None
+            )
             messageToSend = f"{'Anonymous' if anonymous else interaction.user.mention} has placed a bet : \n\n- :first_place: : {bet1}\n- :second_place: : {bet2}\n- :third_place: : {bet3}\n\nPlace your own bet using the `/bet` command !"
             await hc.place_bet(interaction.user.id, bet1, bet2, bet3, anonymous, interaction.user.display_name)
             await interaction.guild.get_channel(database.get("bets_channel_id")).send(messageToSend)
@@ -506,7 +504,8 @@ async def team(interaction: discord.Interaction):
         await interaction.response.send_message(view=layoutView, ephemeral=True)
     return
 
-@bot.tree.command(name='bet', description="Bet on the Hellcup's podium")
+
+@bot.tree.command(name="bet", description="Bet on the Hellcup's podium")
 async def bet(interaction: discord.Interaction):
     """
     Pari sur le podium de la Hellcup.
@@ -521,9 +520,10 @@ async def bet(interaction: discord.Interaction):
         teamsList = await hc.get_qualified_teams()
         view = discord.ui.View()
         for teamTemp in teamsList:
-            view.add_item(discord.ui.Button(label=teamTemp, custom_id=f"bet1.{teamTemp}", style=discord.ButtonStyle.primary))
+            view.add_item(
+                discord.ui.Button(label=teamTemp, custom_id=f"bet1.{teamTemp}", style=discord.ButtonStyle.primary)
+            )
         await interaction.followup.send("Which team will win this Hellcup ?", view=view, ephemeral=True)
-
 
 
 @bot.event
@@ -559,7 +559,9 @@ async def on_message(message: discord.Message):
                 await message.delete()  # Supprimer la commande $sync
                 sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
                 syncRet = await bot.tree.sync()
-                await sync_message.edit(content="✅ Commandes synchronisées avec succès! " + str(syncRet), delete_after=5)
+                await sync_message.edit(
+                    content="✅ Commandes synchronisées avec succès! " + str(syncRet), delete_after=5
+                )
             except Exception as e:
                 await sync_message.edit(content=f"❌ Erreur lors de la synchronisation: {str(e)}")
 
@@ -572,17 +574,47 @@ async def on_message(message: discord.Message):
             await message.delete()
 
         elif message.content == "$stop_inscription":
-            messageToModify = await message.guild.get_channel(database.get("rules_channel_id")).fetch_message(database.get("signup_message_id"))
+            messageToModify = await message.guild.get_channel(database.get("rules_channel_id")).fetch_message(
+                database.get("signup_message_id")
+            )
             view = discord.ui.View(timeout=None)
-            view.add_item(discord.ui.Button(label=messageToModify.components[0].children[0].label, custom_id=messageToModify.components[0].children[0].custom_id, style=discord.ButtonStyle.secondary, disabled=True))
-            view.add_item(discord.ui.Button(label=messageToModify.components[0].children[1].label, custom_id=messageToModify.components[0].children[1].custom_id, style=messageToModify.components[0].children[1].style))
+            view.add_item(
+                discord.ui.Button(
+                    label=messageToModify.components[0].children[0].label,
+                    custom_id=messageToModify.components[0].children[0].custom_id,
+                    style=discord.ButtonStyle.secondary,
+                    disabled=True,
+                )
+            )
+            view.add_item(
+                discord.ui.Button(
+                    label=messageToModify.components[0].children[1].label,
+                    custom_id=messageToModify.components[0].children[1].custom_id,
+                    style=messageToModify.components[0].children[1].style,
+                )
+            )
             await messageToModify.edit(content=messageToModify.content, embed=messageToModify.embeds[0], view=view)
 
         elif message.content == "$start_inscription":
-            messageToModify = await message.guild.get_channel(database.get("rules_channel_id")).fetch_message(database.get("signup_message_id"))
+            messageToModify = await message.guild.get_channel(database.get("rules_channel_id")).fetch_message(
+                database.get("signup_message_id")
+            )
             view = discord.ui.View(timeout=None)
-            view.add_item(discord.ui.Button(label=messageToModify.components[0].children[0].label, custom_id=messageToModify.components[0].children[0].custom_id, style=discord.ButtonStyle.primary, disabled=False))
-            view.add_item(discord.ui.Button(label=messageToModify.components[0].children[1].label, custom_id=messageToModify.components[0].children[1].custom_id, style=messageToModify.components[0].children[1].style))
+            view.add_item(
+                discord.ui.Button(
+                    label=messageToModify.components[0].children[0].label,
+                    custom_id=messageToModify.components[0].children[0].custom_id,
+                    style=discord.ButtonStyle.primary,
+                    disabled=False,
+                )
+            )
+            view.add_item(
+                discord.ui.Button(
+                    label=messageToModify.components[0].children[1].label,
+                    custom_id=messageToModify.components[0].children[1].custom_id,
+                    style=messageToModify.components[0].children[1].style,
+                )
+            )
             await messageToModify.edit(content=messageToModify.content, embed=messageToModify.embeds[0], view=view)
 
         elif message.content.startswith("$add_invite"):
@@ -608,25 +640,34 @@ async def on_message(message: discord.Message):
         elif message.content.startswith("$initmessagebienvenue"):
             view = discord.ui.View(timeout=None)
             player = discord.ui.Button(style=discord.ButtonStyle.primary, label="Player !", custom_id="init_player")
-            spectator = discord.ui.Button(style=discord.ButtonStyle.primary, label="Spectator !", custom_id="init_spectator")
+            spectator = discord.ui.Button(
+                style=discord.ButtonStyle.primary, label="Spectator !", custom_id="init_spectator"
+            )
             view.add_item(player)
             view.add_item(spectator)
             e = discord.Embed(title="Welcome on the server ! :wave:", color=discord.Color.green())
-            e.add_field(name="What are you doing on the server ?", value="If you are here to play, click on the \"Player !\" button, if you are here to spectate the tournament, click on the \"Spectator !\" button.", inline=False)
+            e.add_field(
+                name="What are you doing on the server ?",
+                value='If you are here to play, click on the "Player !" button, if you are here to spectate the tournament, click on the "Spectator !" button.',
+                inline=False,
+            )
             e.set_footer(text="©HellBot")
-            await message.guild.get_channel(database.get('rules_channel_id')).send(embed=e, view=view)
+            await message.guild.get_channel(database.get("rules_channel_id")).send(embed=e, view=view)
             database.modify("signup_message_id", message.id)
+
 
 # @bot.command(name='hello')
 # async def hello(ctx):
 #     """Répond avec un message de salutation"""
 #     await ctx.send(f'👋 Bonjour {ctx.author.name}!')
 
-@bot.command(name='ping')
+
+@bot.command(name="ping")
 async def ping(ctx):
     """Vérifie la latence du bot"""
-    await ctx.send(f'Pong! Latence: {round(bot.latency * 1000)}ms')
+    await ctx.send(f"Pong! Latence: {round(bot.latency * 1000)}ms")
+
 
 # Lancer le bot
-if __name__ == '__main__':
+if __name__ == "__main__":
     bot.run(TOKEN, log_handler=None)

@@ -2,8 +2,8 @@ from datetime import datetime
 
 import discord
 from discord import ui
-
 from easyDB import DB
+
 import hellcup as hc
 
 db = DB("hellbot")
