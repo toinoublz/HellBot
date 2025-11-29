@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from easyDB import DB
 import discord_logs as dl
 import hellcup as hc
+import layoutViews as lv
 import modals as md
 
 # Charger les variables d'environnement depuis le fichier .env
@@ -479,7 +480,8 @@ async def on_interaction(interaction: discord.Interaction):
             await hc.place_bet(interaction.user.id, bet1, bet2, bet3, anonymous, interaction.user.display_name)
             await interaction.guild.get_channel(database.get("bets_channel_id")).send(messageToSend)
 
-@bot.tree.command(name='team', description="Create your team !")
+
+@bot.tree.command(name="team", description="Create your team !")
 async def team(interaction: discord.Interaction):
     """
     Create your team !
@@ -488,13 +490,20 @@ async def team(interaction: discord.Interaction):
     Si vous êtes inscrit en tant que spectateur, vous ne pouvez pas utiliser cette commande, si vous voulez jouer, rdv dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !
     """
     if interaction.user in interaction.guild.get_role(database.get("player_role_id")).members:
-        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nYou already have a team !", ephemeral=True)
+        await interaction.response.send_message(
+            f":warning: {interaction.user.mention} :warning:\n\nYou already have a team !", ephemeral=True
+        )
     elif interaction.user in interaction.guild.get_role(database.get("spectator_role_id")).members:
-        await interaction.response.send_message(f":warning: {interaction.user.mention} :warning:\n\nYou are registered as a spectator, if you want to play, go to the channel {interaction.guild.get_channel(database.get('rules_channel_id')).mention} !", ephemeral=True)
+        await interaction.response.send_message(
+            f":warning: {interaction.user.mention} :warning:\n\nYou are registered as a spectator, if you want to play, go to the channel {interaction.guild.get_channel(database.get('rules_channel_id')).mention} !",
+            ephemeral=True,
+        )
     else:
-        view = discord.ui.View()
-        view.add_item(discord.ui.UserSelect(custom_id="team_select", max_values=1, placeholder="Who will be your team mate ?", min_values=1))
-        await interaction.response.send_message("Indicate your team mate", view=view, ephemeral=True)
+        # view = discord.ui.View()
+        # view.add_item(discord.ui.UserSelect(custom_id="team_select", max_values=1, placeholder="Who will be your team mate ?", min_values=1))
+        # await interaction.response.send_message("Indicate your team mate", view=view, ephemeral=True)
+        layoutView = lv.TeamInscriptionLayoutView(interaction, log, database)
+        await interaction.response.send_message(view=layoutView, ephemeral=True)
     return
 
 @bot.tree.command(name='bet', description="Bet on the Hellcup's podium")
