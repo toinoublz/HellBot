@@ -40,16 +40,16 @@ async def on_ready():
     puis change son statut pour afficher le nombre de membres du serveur HellCup.
     """
     print(f"{bot.user} est connecté à Discord!")
-    log.add_guild(bot.get_guild(database.get("server_id")))
+    guild = bot.get_guild(database.get("hellcup_guild_id"))
+    log.add_guild(guild)
     # Charger les invitations existantes pour chaque serveur
     for guild in bot.guilds:
         invitesBefore[guild.id] = await guild.invites()
         invitesBefore[guild.id] = {inv.code: inv for inv in invitesBefore[guild.id]}
 
-    hellcupGuild = bot.get_guild(database.get("hellcup_guild_id"))
     await bot.change_presence(
         activity=discord.Activity(
-            name=f"{len(hellcupGuild.members)} gens (trop) cools !",
+            name=f"{len(guild.members)} gens (trop) cools !",
             type=discord.ActivityType.watching,
         )
     )
@@ -557,13 +557,13 @@ async def on_message(message: discord.Message):
             # Vérifier si l'auteur est un administrateur
             try:
                 await message.delete()  # Supprimer la commande $sync
-                sync_message = await message.channel.send("🔄 Synchronisation des commandes en cours...")
+                syncMessage = await message.channel.send("🔄 Synchronisation des commandes en cours...")
                 syncRet = await bot.tree.sync()
-                await sync_message.edit(
+                await syncMessage.edit(
                     content="✅ Commandes synchronisées avec succès! " + str(syncRet), delete_after=5
                 )
             except Exception as e:
-                await sync_message.edit(content=f"❌ Erreur lors de la synchronisation: {str(e)}")
+                await syncMessage.edit(content=f"❌ Erreur lors de la synchronisation: {str(e)}")
 
         elif message.content.startswith("$send"):
             try:
