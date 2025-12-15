@@ -21,8 +21,8 @@ class RegisterModal(ui.Modal):
         super().__init__(title="Inscription")
 
         surname = ui.TextInput(
-            label="Surname",
-            placeholder="Your surname",
+            label="Username",
+            placeholder="Your username",
             style=discord.TextStyle.short,
             min_length=2,
             max_length=32,

@@ -74,7 +74,7 @@ async def gspread_new_registration(member: dict):
     Returns nothing.
     """
     clientg = await connect_gsheet_api()
-    spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
+    spreadsheet = await clientg.open("[ORGA] Hell Cup S2 Inscriptions")
     worksheet = await spreadsheet.worksheet("Inscrits")
     await worksheet.append_row([member["discordId"], member["geoguessrId"], member["surname"], 0])
     return

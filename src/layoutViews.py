@@ -98,68 +98,64 @@ class TeamInscriptionLayoutView(discord.ui.LayoutView):
 
         async def close_inscription(interaction: discord.Interaction):
             await interaction.response.defer(ephemeral=True)
-
             try:
-                # if self.secondPlayer in interaction.guild.get_role(self.database.get("player_role_id")).members:
-                #     await interaction.response.send_message(f":warning: {self.firstPlayer.mention} :warning:\n\nThe selected player already has a team, if you think this is an error, please see with an admin.", ephemeral=True)
-                # elif self.secondPlayer in interaction.guild.get_role(self.database.get("spectator_role_id")).members:
-                #     await interaction.response.send_message(f":warning: {self.firstPlayer.mention} :warning:\n\nThe selected player is registered as a spectator, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(self.database.get('rules_channel_id')).mention} !", ephemeral=True)
-                # elif self.secondPlayer not in interaction.guild.get_role(self.database.get("registered_role_id")).members:
-                #     await interaction.response.send_message(f":warning: {self.firstPlayer.mention} :warning:\n\nThe selected player is not yet registered, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(self.database.get('rules_channel_id')).mention} !", ephemeral=True)
-                # else:
-                #     await interaction.response.defer()
+                if self.secondPlayer in interaction.guild.get_role(self.database.get("player_role_id")).members:
+                    await interaction.response.send_message(f":warning: {self.firstPlayer.mention} :warning:\n\nThe selected player already has a team, if you think this is an error, please see with an admin.", ephemeral=True)
+                elif self.secondPlayer in interaction.guild.get_role(self.database.get("spectator_role_id")).members:
+                    await interaction.response.send_message(f":warning: {self.firstPlayer.mention} :warning:\n\nThe selected player is registered as a spectator, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(self.database.get('rules_channel_id')).mention} !", ephemeral=True)
+                elif self.secondPlayer not in interaction.guild.get_role(self.database.get("registered_role_id")).members:
+                    await interaction.response.send_message(f":warning: {self.firstPlayer.mention} :warning:\n\nThe selected player is not yet registered, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(self.database.get('rules_channel_id')).mention} !", ephemeral=True)
                 teamData = await hc.create_team(
                     self.firstPlayer, self.secondPlayer, self.firstMode, self.secondMode, self.thirdMode
                 )
-                #     await self.firstPlayer.add_roles(interaction.guild.get_role(self.database.get("player_role_id")))
-                #     await self.secondPlayer.add_roles(interaction.guild.get_role(self.database.get("player_role_id")))
-                #     teamRole = await interaction.guild.create_role(name='_'.join(teamData["team_name"]))
-                #     await self.firstPlayer.add_roles(teamRole)
-                #     await self.secondPlayer.add_roles(teamRole)
-                #     category = interaction.guild.get_channel(self.database.get("team_text_channels_category_id"))
-                #     adminRole = interaction.guild.get_role(self.database.get("admin_role_id"))
-                #     varRole = interaction.guild.get_role(self.database.get("var_role_id"))
+                await self.firstPlayer.add_roles(interaction.guild.get_role(self.database.get("player_role_id")))
+                await self.secondPlayer.add_roles(interaction.guild.get_role(self.database.get("player_role_id")))
+                teamRole = await interaction.guild.create_role(name=teamData["team_name"])
+                await self.firstPlayer.add_roles(teamRole)
+                await self.secondPlayer.add_roles(teamRole)
+                category = interaction.guild.get_channel(self.database.get("team_text_channels_category_id"))
+                adminRole = interaction.guild.get_role(self.database.get("admin_role_id"))
+                varRole = interaction.guild.get_role(self.database.get("var_role_id"))
 
-                #     overwritesText = {
-                #         interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                #         teamRole: discord.PermissionOverwrite(view_channel=True),
-                #         adminRole: discord.PermissionOverwrite(view_channel=True),
-                #     }
+                overwritesText = {
+                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                    teamRole: discord.PermissionOverwrite(view_channel=True),
+                    adminRole: discord.PermissionOverwrite(view_channel=True),
+                }
 
-                #     overwritesVocal = {
-                #         interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                #         teamRole: discord.PermissionOverwrite(view_channel=True),
-                #         varRole: discord.PermissionOverwrite(view_channel=True),
-                #     }
-                #     if len(category.channels) == 50:
-                #         count = sum(1 for c in category.guild.categories if c.name.lower().startswith("salons d'équipes"))
-                #         newCategory = await interaction.guild.create_category_channel(f"Salons d'équipes {count + 1}")
-                #         self.database.modify("team_text_channels_category_id", newCategory.id)
-                #         category = newCategory
-                #     await category.create_voice_channel(f"team-{teamRole.name}", overwrites=overwritesVocal)
-                #     channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwritesText)
-                #     try:
-                #         await interaction.followup.send(f":tada: {self.firstPlayer.mention} :tada:\n\nYou are now in a team with {self.secondPlayer.mention} ! Go to the channel {channel.mention} to exchange with your mate !", ephemeral=True)
-                #     except Exception as e:
-                #         await self.log.send_log_embed(f"Impossible d'envoyer la réponse de l'interaction {self.firstPlayer.name} ({self.firstPlayer.id}) et {self.secondPlayer.name} ({self.secondPlayer.id})", dl.LogLevels.ERROR, e)
-                #     try:
-                #         await self.firstPlayer.send(f":tada: {self.firstPlayer.mention} :tada:\n\nYou are now in a team with {self.secondPlayer.mention} ! Go to the channel {channel.mention} to exchange with your mate !")
-                #     except Exception as e:
-                #         await self.log.send_log_embed(f"Impossible d'envoyer le message d'équipe à {self.firstPlayer.name} ({self.firstPlayer.id}) et {self.secondPlayer.name} ({self.secondPlayer.id})", dl.LogLevels.ERROR, e)
-                #     try:
-                #         await self.secondPlayer.send(f":tada: {self.secondPlayer.mention} :tada:\n\nYou are now in a team with {self.firstPlayer.mention} ! Go to the channel {channel.mention} to exchange with your mate ! If this is an error, please contact an admin.")
-                #     except Exception as e:
-                #         await self.log.send_log_embed(f"Impossible d'envoyer le message d'équipe à {self.secondPlayer.name} ({self.secondPlayer.id}) et {self.firstPlayer.name} ({self.firstPlayer.id})", dl.LogLevels.ERROR, e)
+                overwritesVocal = {
+                    interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                    teamRole: discord.PermissionOverwrite(view_channel=True),
+                    varRole: discord.PermissionOverwrite(view_channel=True),
+                }
+                if len(category.channels) == 50:
+                    count = sum(1 for c in category.guild.categories if c.name.lower().startswith("salons d'équipes"))
+                    newCategory = await interaction.guild.create_category_channel(f"Salons d'équipes {count + 1}")
+                    self.database.modify("team_text_channels_category_id", newCategory.id)
+                    category = newCategory
+                await category.create_voice_channel(f"team-{teamRole.name}", overwrites=overwritesVocal)
+                channel = await category.create_text_channel(f"team-{teamRole.name}", overwrites=overwritesText)
+                try:
+                    await interaction.followup.send(f":tada: {self.firstPlayer.mention} :tada:\n\nYou are now in a team with {self.secondPlayer.mention} ! Go to the channel {channel.mention} to exchange with your mate !", ephemeral=True)
+                except Exception as e:
+                    await self.log.send_log_embed(f"Impossible d'envoyer la réponse de l'interaction {self.firstPlayer.name} ({self.firstPlayer.id}) et {self.secondPlayer.name} ({self.secondPlayer.id})", dl.LogLevels.ERROR, e)
+                try:
+                    await self.firstPlayer.send(f":tada: {self.firstPlayer.mention} :tada:\n\nYou are now in a team with {self.secondPlayer.mention} ! Go to the channel {channel.mention} to exchange with your mate !")
+                except Exception as e:
+                    await self.log.send_log_embed(f"Impossible d'envoyer le message d'équipe à {self.firstPlayer.name} ({self.firstPlayer.id}) et {self.secondPlayer.name} ({self.secondPlayer.id})", dl.LogLevels.ERROR, e)
+                try:
+                    await self.secondPlayer.send(f":tada: {self.secondPlayer.mention} :tada:\n\nYou are now in a team with {self.firstPlayer.mention} ! Go to the channel {channel.mention} to exchange with your mate ! If this is an error, please contact an admin.")
+                except Exception as e:
+                    await self.log.send_log_embed(f"Impossible d'envoyer le message d'équipe à {self.secondPlayer.name} ({self.secondPlayer.id}) et {self.firstPlayer.name} ({self.firstPlayer.id})", dl.LogLevels.ERROR, e)
 
                 teamLayoutview = await TeamLayoutView.create(teamData)
 
-                # await interaction.guild.get_channel(self.database.get("registration_channel_id")).send(view=teamLayoutview)
-                # await interaction.guild.get_channel(self.database.get("new_team_channel_id")).send(view=teamLayoutview)
+                await interaction.guild.get_channel(self.database.get("registration_channel_id")).send(view=teamLayoutview)
+                await interaction.guild.get_channel(self.database.get("new_team_channel_id")).send(view=teamLayoutview)
 
                 await interaction.channel.send(view=teamLayoutview)
             except Exception:
                 traceback.print_exc()
-            await interaction.followup.send("OK", ephemeral=True)
 
         self.teamMateSelect = discord.ui.UserSelect(
             max_values=1, placeholder="Who will be your team mate ?", min_values=1

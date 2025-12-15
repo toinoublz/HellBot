@@ -226,13 +226,6 @@ async def on_member_join(member: discord.Member):
 
     await member.add_roles(member.guild.get_role(database.get("newbie_role_id")))
 
-    try:
-        await hc.refresh_invites_message(member.guild, database)
-    except Exception as e:
-        await log.send_log_embed(
-            "Une erreur s'est produite lors de la mise à jour des invitations", dl.LogLevels.ERROR, e
-        )
-
     await bot.change_presence(
         activity=discord.Activity(
             name=f"{len(member.guild.members)} gens (trop) cools !",
@@ -538,7 +531,6 @@ async def on_message(message: discord.Message):
     La commande $stop_inscription désactive le bouton d'inscription.
     La commande $start_inscription réactive le bouton d'inscription.
     La commande $add_invite <link> <name> ajoute l'invitation <link> au dictionnaire des invitations avec le nom <name>.
-    La commande $refresh_invites_message met à jour le message des invitations.
     La commande $test vérifie si le serveur a plus de 48 catégories de salons d'équipes et créé une nouvelle si c'est le cas.
     La commande $initmessagebienvenue envoie un message de bienvenue sur le serveur avec un embed et deux boutons pour s'inscrire en tant que joueur ou spectateur.
 
@@ -622,9 +614,6 @@ async def on_message(message: discord.Message):
             invitDict = database.get("invit_to_check")
             invitDict[link.split("/")[-1]] = name
             database.modify("invit_to_check", invitDict)
-
-        elif message.content == "$refresh_invites_message":
-            await hc.refresh_invites_message(message.guild, database)
 
         elif message.content == "$test":
             category = message.guild.get_channel(database.get("team_text_channels_category_id"))
