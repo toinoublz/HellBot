@@ -95,10 +95,10 @@ async def log_error(error: Exception, ctx=None):
 
 
 @bot.event
-async def on_error(event):
+async def on_error(event, *args, **kwargs):
     """Capture les erreurs d'événements"""
     error = traceback.format_exc()
-    await log_error(Exception(f"Erreur dans l'événement {event}:\n{error}"))
+    await log_error(Exception(f"Erreur dans l'événement {event}:\n{error}\n\nArgs: {args}\nKwargs: {kwargs}"))
 
 
 @bot.event
