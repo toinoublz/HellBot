@@ -8,6 +8,28 @@ import hellcup as hc
 
 MODE_EMOJIS = {"Move": "🚶‍♂️", "No move": "📍", "NMPZ": "🖼️"}
 
+class ErrorLayoutView(discord.ui.LayoutView):
+    def __init__(self, errorMessage: str):
+        super().__init__(timeout=None)
+        container = discord.ui.Container(accent_color=discord.Color.red())
+        container.add_item(discord.ui.TextDisplay("# ⚠️ Error ⚠️"))
+        container.add_item(discord.ui.Separator())
+        container.add_item(discord.ui.TextDisplay("### " + errorMessage))
+        container.add_item(discord.ui.Separator())
+        container.add_item(discord.ui.TextDisplay("*Please try again by using the `/team` command.*"))
+        self.add_item(container)
+
+class LoadingLayoutView(discord.ui.LayoutView):
+    def __init__(self):
+        super().__init__(timeout=None)
+        container = discord.ui.Container(accent_color=discord.Color.blue())
+        container.add_item(discord.ui.Section(
+            discord.ui.TextDisplay
+            ("# The bot is working on your request..."),
+            accessory=discord.ui.Thumbnail("https://cdn.discordapp.com/attachments/1309909816533188709/1450549810196119552/loading-thinking.gif?ex=6942f148&is=69419fc8&hm=464be671fe1cbcdfdcef2c986abcaf8e0f5f91c191e83778d0a114df995cb19a&")))
+        container.add_item(discord.ui.Separator())
+        container.add_item(discord.ui.TextDisplay("*If it takes too long (more than a minute), please contact an admin.*"))
+        self.add_item(container)
 
 class TeamInscriptionLayoutView(discord.ui.LayoutView):
     def __init__(self, interaction: discord.Interaction, log: dl.DiscordLog, database: DB):
@@ -27,11 +49,6 @@ class TeamInscriptionLayoutView(discord.ui.LayoutView):
         self.secondMode = None
         self.thirdMode = None
 
-        self.teamMateSelected = False
-        self.firstModeSelected = False
-        self.secondModeSelected = False
-        self.thirdModeSelected = False
-
         moveSelectOption = discord.SelectOption(label="Move", emoji=MODE_EMOJIS["Move"])
         noMoveSelectOption = discord.SelectOption(label="No move", emoji=MODE_EMOJIS["No move"])
         nmpzSelectOption = discord.SelectOption(label="NMPZ", emoji=MODE_EMOJIS["NMPZ"])
@@ -49,24 +66,24 @@ class TeamInscriptionLayoutView(discord.ui.LayoutView):
             self.thirdSelect.options = self.thirdSelectOptions
             await self.interaction.edit_original_response(view=self)
 
-        def check_button():
-            if all([self.teamMateSelected, self.firstModeSelected, self.secondModeSelected, self.thirdModeSelected]):
-                self.sendButton.disabled = False
-
         async def team_mate_select_callback(interaction: discord.Interaction):
             await interaction.response.defer(ephemeral=True)
             self.secondPlayer = interaction.guild.get_member(int(interaction.data["values"][0]))
             if self.firstPlayer.id == self.secondPlayer.id:
-                await interaction.response.send_message(
-                    f":warning: {self.firstPlayer.mention} :warning:\n\nYou can't make a team with yourself !",
-                    ephemeral=True,
-                )
+                await self.interaction.edit_original_response(view=ErrorLayoutView("You can't be your own team mate."))
                 return
-            self.teamMateSelected = True
+            if self.secondPlayer in interaction.guild.get_role(self.database.get("player_role_id")).members:
+                await self.interaction.edit_original_response(view=ErrorLayoutView("The selected player already has a team, if you think this is an error, please see with an admin."))
+                return
+            if self.secondPlayer in interaction.guild.get_role(self.database.get("spectator_role_id")).members:
+                await self.interaction.edit_original_response(view=ErrorLayoutView(f"The selected player is registered as a spectator, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(self.database.get('rules_channel_id')).mention} !"))
+                return
+            if self.secondPlayer not in interaction.guild.get_role(self.database.get("registered_role_id")).members:
+                await self.interaction.edit_original_response(view=ErrorLayoutView(f"The selected player is not yet registered, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(self.database.get('rules_channel_id')).mention} !"))
+                return
             self.firstSelect.disabled = False
             self.secondSelect.disabled = False
             self.thirdSelect.disabled = False
-            check_button()
             await update()
 
         async def first_select_callback(interaction: discord.Interaction):
@@ -74,8 +91,6 @@ class TeamInscriptionLayoutView(discord.ui.LayoutView):
             self.firstMode = interaction.data["values"][0]
             self.firstSelectOptions[self.indexList.index(self.firstMode)].default = True
             self.firstSelect.options = self.firstSelectOptions
-            self.firstModeSelected = True
-            check_button()
             await update()
 
         async def second_select_callback(interaction: discord.Interaction):
@@ -83,8 +98,6 @@ class TeamInscriptionLayoutView(discord.ui.LayoutView):
             self.secondMode = interaction.data["values"][0]
             self.secondSelectOptions[self.indexList.index(self.secondMode)].default = True
             self.secondSelect.options = self.secondSelectOptions
-            self.secondModeSelected = True
-            check_button()
             await update()
 
         async def third_select_callback(interaction: discord.Interaction):
@@ -92,19 +105,16 @@ class TeamInscriptionLayoutView(discord.ui.LayoutView):
             self.thirdMode = interaction.data["values"][0]
             self.thirdSelectOptions[self.indexList.index(self.thirdMode)].default = True
             self.thirdSelect.options = self.thirdSelectOptions
-            self.thirdModeSelected = True
-            check_button()
             await update()
 
         async def close_inscription(interaction: discord.Interaction):
             await interaction.response.defer(ephemeral=True)
             try:
-                if self.secondPlayer in interaction.guild.get_role(self.database.get("player_role_id")).members:
-                    await interaction.response.send_message(f":warning: {self.firstPlayer.mention} :warning:\n\nThe selected player already has a team, if you think this is an error, please see with an admin.", ephemeral=True)
-                elif self.secondPlayer in interaction.guild.get_role(self.database.get("spectator_role_id")).members:
-                    await interaction.response.send_message(f":warning: {self.firstPlayer.mention} :warning:\n\nThe selected player is registered as a spectator, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(self.database.get('rules_channel_id')).mention} !", ephemeral=True)
-                elif self.secondPlayer not in interaction.guild.get_role(self.database.get("registered_role_id")).members:
-                    await interaction.response.send_message(f":warning: {self.firstPlayer.mention} :warning:\n\nThe selected player is not yet registered, to remedy this, tell him to register as a player in the channel {interaction.guild.get_channel(self.database.get('rules_channel_id')).mention} !", ephemeral=True)
+                allSelectedModes = [self.firstMode, self.secondMode, self.thirdMode]
+                if len(allSelectedModes) != len(set(allSelectedModes)):
+                    await self.interaction.edit_original_response(view=ErrorLayoutView("You can't select the same mode twice."))
+                    return
+                await self.interaction.edit_original_response(view=LoadingLayoutView())
                 teamData = await hc.create_team(
                     self.firstPlayer, self.secondPlayer, self.firstMode, self.secondMode, self.thirdMode
                 )
@@ -152,8 +162,6 @@ class TeamInscriptionLayoutView(discord.ui.LayoutView):
 
                 await interaction.guild.get_channel(self.database.get("registration_channel_id")).send(view=teamLayoutview)
                 await interaction.guild.get_channel(self.database.get("new_team_channel_id")).send(view=teamLayoutview)
-
-                await interaction.channel.send(view=teamLayoutview)
             except Exception:
                 traceback.print_exc()
 
@@ -198,7 +206,7 @@ class TeamInscriptionLayoutView(discord.ui.LayoutView):
         self.fourthContainer.add_item(discord.ui.TextDisplay("What is your least favorite mode ?"))
         self.fourthContainer.add_item(discord.ui.ActionRow(self.thirdSelect))
 
-        self.sendButton = discord.ui.Button(label="Send", style=discord.ButtonStyle.primary, disabled=True)
+        self.sendButton = discord.ui.Button(label="Send", style=discord.ButtonStyle.primary, disabled=False)
         self.sendButton.callback = close_inscription
 
         self.add_item(self.firstContainer)
@@ -228,7 +236,14 @@ class PlayerContainer(discord.ui.Container):
         titleTextDisplay = discord.ui.TextDisplay(f"## {intraData['name']}")
         playersData = intraData["playersData"]
         countryTextDisplay = discord.ui.TextDisplay(f"Country : :flag_{playersData['countryCode'].lower()}:")
-        eloTextDisplay = discord.ui.TextDisplay(f"Current ELO : {playersData['competitive']['rating']}")
+        if playersData.get("rating"):
+            eloTextDisplay = discord.ui.TextDisplay(f"Current ELO : {playersData['rating']}")
+        else:
+            eloTextDisplay = discord.ui.TextDisplay("Current ELO : N/A")
+        if playersData.get("bestCountries"):
+            bestCountriesTextDisplay = discord.ui.TextDisplay(f"Best countries in Duel : {' - '.join(':flag_' + country.lower() + ':' for country in playersData['bestCountries'])}")
+        else:
+            bestCountriesTextDisplay = discord.ui.TextDisplay("Best countries in Duel : N/A")
         profileButton = discord.ui.Button(
             label="Geoguessr profile",
             url=f"https://www.geoguessr.com/user/{intraData['geoguessrId']}",
@@ -238,10 +253,11 @@ class PlayerContainer(discord.ui.Container):
             discord.ui.Section(
                 titleTextDisplay,
                 countryTextDisplay,
-                eloTextDisplay,
                 accessory=discord.ui.Thumbnail(f"https://www.geoguessr.com/images/plain/{playersData['pin']['url']}"),
             )
         )
+        self.add_item(eloTextDisplay)
+        self.add_item(bestCountriesTextDisplay)
         self.add_item(discord.ui.ActionRow(profileButton))
 
     @classmethod

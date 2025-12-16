@@ -122,5 +122,8 @@ async def get_player_datas(geoguessrId: str) -> dict:
         dict: A dictionary containing the player's data.
     """
     async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://www.geoguessr.com/api/v4/ranked-system/progress/{geoguessrId}") as r:
+            tempRes = await r.json()
         async with session.get(f"https://www.geoguessr.com/api/v3/users/{geoguessrId}") as r:
-            return await r.json()
+            tempRes.update(await r.json())
+        return tempRes

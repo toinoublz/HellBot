@@ -489,10 +489,12 @@ async def team(interaction: discord.Interaction):
             f":warning: {interaction.user.mention} :warning:\n\nYou are registered as a spectator, if you want to play, go to the channel {interaction.guild.get_channel(database.get('rules_channel_id')).mention} !",
             ephemeral=True,
         )
+    elif interaction.user not in interaction.guild.get_role(database.get("registered_role_id")).members:
+        await interaction.response.send_message(
+            f":warning: {interaction.user.mention} :warning:\n\nYou are not registered as a player, if you want to play, go to the channel {interaction.guild.get_channel(database.get('rules_channel_id')).mention} !",
+            ephemeral=True,
+        )
     else:
-        # view = discord.ui.View()
-        # view.add_item(discord.ui.UserSelect(custom_id="team_select", max_values=1, placeholder="Who will be your team mate ?", min_values=1))
-        # await interaction.response.send_message("Indicate your team mate", view=view, ephemeral=True)
         layoutView = lv.TeamInscriptionLayoutView(interaction, log, database)
         await interaction.response.send_message(view=layoutView, ephemeral=True)
     return
