@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 from easyDB import DB
+from googletrans import Translator
 
 import discord_logs as dl
 import hellcup as hc
@@ -657,6 +658,28 @@ async def on_message(message: discord.Message):
 async def ping(ctx):
     """Vérifie la latence du bot"""
     await ctx.send(f"Pong! Latence: {round(bot.latency * 1000)}ms")
+
+@bot.tree.context_menu(name="Traduire en Fr")
+async def translate_message(interaction: discord.Interaction, message: discord.Message):
+    """
+    Translate a message to French.
+
+    This context menu command translates a message to French language.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object which contains information about the context menu invocation.
+    message : discord.Message
+        The message object which contains the content to be translated.
+
+    Returns
+    -------
+    None
+        This function does not return anything.
+    """
+    async with Translator() as translator:
+        await interaction.response.send_message((await translator.translate(message.content, dest="fr")).text, ephemeral=True)
 
 
 # Lancer le bot
