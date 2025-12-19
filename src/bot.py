@@ -50,8 +50,8 @@ async def on_ready():
 
     await bot.change_presence(
         activity=discord.Activity(
-            name=f"{len(guild.members)} gens (trop) cools !",
-            type=discord.ActivityType.watching,
+            name=f"{len(guild.members)} (really) cool members !",
+            type=discord.ActivityType.competing,
         )
     )
 
@@ -229,8 +229,8 @@ async def on_member_join(member: discord.Member):
 
     await bot.change_presence(
         activity=discord.Activity(
-            name=f"{len(member.guild.members)} gens (trop) cools !",
-            type=discord.ActivityType.watching,
+            name=f"{len(member.guild.members)} (really) cool members !",
+            type=discord.ActivityType.competing,
         )
     )
 
@@ -481,6 +481,10 @@ async def team(interaction: discord.Interaction):
     Si vous êtes deja inscrit en tant que joueur, vous ne pouvez pas utiliser cette commande.
     Si vous êtes inscrit en tant que spectateur, vous ne pouvez pas utiliser cette commande, si vous voulez jouer, rdv dans le channel {interaction.guild.get_channel(db.get('rules_channel_id')).mention} !
     """
+    if isinstance(interaction.channel, discord.DMChannel):
+        await interaction.response.send_message("This command can only be used on the main server !", ephemeral=True)
+        return
+
     if interaction.user in interaction.guild.get_role(database.get("player_role_id")).members:
         await interaction.response.send_message(
             f":warning: {interaction.user.mention} :warning:\n\nYou already have a team !", ephemeral=True
@@ -524,10 +528,7 @@ async def bet(interaction: discord.Interaction):
 
 @bot.event
 async def on_message(message: discord.Message):
-    # Ignorer les messages du bot
     """
-    Ignorer les messages du bot.
-
     Si l'utilisateur a la permission d'administrateur, il peut utiliser certaines commandes spéciales.
     La commande $sync synchronise les commandes du bot avec le serveur Discord.
     La commande $send <message> envoie le message <message> sur le channel actuel.
@@ -539,7 +540,7 @@ async def on_message(message: discord.Message):
 
     """
 
-    if message.author.bot:
+    if message.author.bot or isinstance(message.channel, discord.DMChannel):
         return
 
     # Continuer le traitement des autres commandes
