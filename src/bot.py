@@ -661,7 +661,7 @@ async def ping(ctx):
     await ctx.send(f"Pong! Latence: {round(bot.latency * 1000)}ms")
 
 @bot.tree.context_menu(name="Traduire en Fr")
-async def translate_message(interaction: discord.Interaction, message: discord.Message):
+async def translate_message_to_fr(interaction: discord.Interaction, message: discord.Message):
     """
     Translate a message to French.
 
@@ -679,9 +679,32 @@ async def translate_message(interaction: discord.Interaction, message: discord.M
     None
         This function does not return anything.
     """
+    await interaction.response.defer(ephemeral=True)
     async with Translator() as translator:
-        await interaction.response.send_message((await translator.translate(message.content, dest="fr")).text, ephemeral=True)
+        await interaction.followup.send((await translator.translate(message.content, dest="fr")).text, ephemeral=True)
 
+@bot.tree.context_menu(name="Translate to En")
+async def translate_message_to_en(interaction: discord.Interaction, message: discord.Message):
+    """
+    Translate a message to English.
+
+    This context menu command translates a message to English language.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object which contains information about the context menu invocation.
+    message : discord.Message
+        The message object which contains the content to be translated.
+
+    Returns
+    -------
+    None
+        This function does not return anything.
+    """
+    await interaction.response.defer(ephemeral=True)
+    async with Translator() as translator:
+        await interaction.followup.send((await translator.translate(message.content, dest="en")).text, ephemeral=True)
 
 # Lancer le bot
 if __name__ == "__main__":
