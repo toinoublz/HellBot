@@ -72,7 +72,7 @@ async def create_team(member1: discord.Member, member2: discord.Member, firstMod
     return await gu.gspread_new_team(member1, member2, firstMode, secondMode, thirdMode)
 
 
-async def get_qualified_teams():
+async def get_qualified_teams_names_if_id_is_able_to_bet(discordId: int):
     """
     Retrieves the list of qualified teams' names from the Google Sheets document.
 
@@ -80,18 +80,7 @@ async def get_qualified_teams():
 
     :rtype: List[str]
     """
-    return await gu.get_qualified_teams_names()
-
-
-async def get_bets_discord_ids():
-    """
-    Retrieves the list of Discord IDs of the players who have already bet for the Hellcup.
-
-    Returns a list containing the Discord IDs of the players who have already bet.
-
-    :rtype: List[int]
-    """
-    return await gu.get_bets_discord_ids()
+    return await gu.get_qualified_teams_names_if_id_is_able_to_bet(discordId)
 
 
 async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous: bool, discordName: str):

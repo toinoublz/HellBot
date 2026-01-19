@@ -515,10 +515,10 @@ async def bet(interaction: discord.Interaction):
     Sinon, vous pouvez choisir l'une des équipes qualifiées pour cette édition en cliquant sur le bouton correspondant.
     """
     await interaction.response.defer(ephemeral=True)
-    if interaction.user.id in await hc.get_bets_discord_ids():
+    teamsList = await hc.get_qualified_teams_names_if_id_is_able_to_bet(interaction.user.id)
+    if not teamsList:
         await interaction.followup.send(":x: You have already bet for this edition.", ephemeral=True)
     else:
-        teamsList = await hc.get_qualified_teams()
         view = discord.ui.View()
         shuffle(teamsList)
         for teamTemp in teamsList:
