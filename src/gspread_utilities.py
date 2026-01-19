@@ -153,7 +153,7 @@ async def get_qualified_teams_names():
         list: Une liste contenant les noms des équipes qualifiées.
     """
     clientg = await connect_gsheet_api()
-    spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
+    spreadsheet = await clientg.open("[ORGA] Hell Cup S2 Inscriptions")
     worksheet = await spreadsheet.worksheet("Qualifiés")
     data = await worksheet.get_all_records()
     qualifiedTeamsNames = [team["Nom d'équipe"] for team in data]
@@ -168,7 +168,7 @@ async def get_bets_discord_ids():
         list: Une liste contenant les Discord ID des joueurs qui ont déjà parié.
     """
     clientg = await connect_gsheet_api()
-    spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
+    spreadsheet = await clientg.open("[ORGA] Hell Cup S2 Inscriptions")
     worksheet = await spreadsheet.worksheet("Bets")
     data = await worksheet.get_all_records()
     betDiscordIds = [int(bet["DiscordId"]) for bet in data]
@@ -191,6 +191,6 @@ async def place_bet(discordId: int, bet1: str, bet2: str, bet3: str, isAnonymous
         None
     """
     clientg = await connect_gsheet_api()
-    spreadsheet = await clientg.open("[ORGA] Hell Cup Inscriptions ")
+    spreadsheet = await clientg.open("[ORGA] Hell Cup S2 Inscriptions")
     worksheet = await spreadsheet.worksheet("Bets")
     await worksheet.append_row([str(discordId), bet1, bet2, bet3, isAnonymous, discordName])
