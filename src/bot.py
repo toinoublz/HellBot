@@ -1,4 +1,5 @@
 import os
+from random import shuffle
 import traceback
 from datetime import datetime
 
@@ -519,6 +520,7 @@ async def bet(interaction: discord.Interaction):
     else:
         teamsList = await hc.get_qualified_teams()
         view = discord.ui.View()
+        shuffle(teamsList)
         for teamTemp in teamsList:
             view.add_item(
                 discord.ui.Button(label=teamTemp, custom_id=f"bet1.{teamTemp}", style=discord.ButtonStyle.primary)
